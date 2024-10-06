@@ -44,7 +44,7 @@ grouped_data = ad_data.groupby('campaign_id').agg({
 grouped_data['click_rate'] = grouped_data['clicks'] / grouped_data['impressions']
 print(grouped_data['campaign_id'])
 n_arms = len(grouped_data)  # Anpassen hier
-delta = 0.1
+delta = 0.9
 n_rounds =100000
 reward_history = []
 bandit = UCB_Bandit(n_arms, delta)
@@ -65,19 +65,40 @@ for n in range(n_rounds):
 cumulative_reward_opt = np.cumsum(optimal_reward)
 regret = np.maximum(cumulative_reward_opt - cumulative_reward, 0)
 
-print(np.any(regret < 0))
-# Plot kumulativer Regret
+# Plot kumulierter Reward
 plt.figure(figsize=(16, 10))
-plt.plot(regret)
-plt.title("Kumulative Regret über die Zeit")
+plt.plot(cumulative_reward, label='Kumulativer Reward')
+plt.plot(cumulative_reward_opt, label='Optimaler kumulativer Reward', linestyle='--')
+plt.title("Kumulierter Reward im Vergleich zum optimalen Reward")
 plt.xlabel("Runden")
-plt.ylabel("Regret")
+plt.ylabel("Kumulierter Reward")
+plt.legend()
+plt.savefig('cumulative_reward.pdf')
+plt.show()
+
+average_reward = np.convolve(reward_history, np.ones(100)/100, mode='valid')
+plt.figure(figsize=(16, 10))
+plt.plot(average_reward)
+plt.title("Durchschnittlicher Reward über die Zeit")
+plt.xlabel("Runden")
+plt.ylabel("Durchschnittlicher Reward")
+plt.savefig('averrage_reward.pdf')   # Speichern als PDF
+plt.show()
 
 plt.figure(figsize=(16, 10))
 plt.bar(range(n_arms), bandit.arm_counts)
 plt.title("Häufigkeit der Arm-Auswahl")
 plt.xlabel("Arm (Anzeige)")
 plt.ylabel("Anzahl der Ziehungen")
+plt.savefig('häufigkeit_arme.pdf')
+plt.show()
+
+plt.figure(figsize=(16, 10))
+plt.plot(regret)
+plt.title("Kumulative Regret über die Zeit")
+plt.xlabel("Runden")
+plt.ylabel("Regret")
+plt.savefig('cumulative_regret.pdf')
 plt.show()
 
 print(bandit.arm_reward_means)
