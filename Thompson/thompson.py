@@ -12,14 +12,10 @@ class Thompson_Bandit:
         self.arm_counts = np.zeros(self.n_arms)
 
     def choose_arm(self):
-        e = 0.1
-        if np.random.random() * 0.1 < e:
-            return np.random.randint(self.n_arms)
-
         sampled_theta = [beta.rvs(a=self.p[i], b=self.q[i]) for i in range(self.n_arms)]
         n = argmax(sampled_theta)
         self.arm_counts[n] += 1
-        return 3
+        return n
 
     def simulate_env(self, arm, true_conversion_rates: np.ndarray):
         return 1 if np.random.rand() <= true_conversion_rates[arm] else 0
