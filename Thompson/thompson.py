@@ -5,25 +5,18 @@ from numpy.ma.core import argmax
 from scipy.stats import beta
 
 class Thompson_Bandit:
-    def __init__(self, n_arms, p , q):
+    def __init__(self, n_arms):
         self.n_arms = n_arms
-        self.q = q #failures +1
-        self.p = p #successes +1
+        self.q =  np.ones(n_arms)
+        self.p =  np.ones(n_arms)
         self.arm_counts = np.zeros(self.n_arms)
 
     def choose_arm(self):
         sampled_theta = [beta.rvs(a=self.p[i], b=self.q[i]) for i in range(self.n_arms)]
-        sort = sorted(sampled_theta, reverse=True)
-        second_largest = sort[1]
-        m = sampled_theta.index(second_largest)
         n = argmax(sampled_theta)
+        self.arm_counts[n] += 1
+        return n
 
-        if np.random.randint(1,3) == 2:
-            self.arm_counts[n] += 1
-            return n
-        else:
-            self.arm_counts[m] +=1
-            return m
 
     def simulate_env(self, arm, true_conversion_rates: np.ndarray):
         return 1 if np.random.rand() <= true_conversion_rates[arm] else 0
@@ -43,7 +36,7 @@ grouped_data = ad_data.groupby('campaign_id').agg({
 }).reset_index()
 
 n_arms = len((grouped_data)['campaign_id'].unique())
-n_rounds =1000
+n_rounds = 10000
 alpha_params = np.empty(n_arms)
 beta_params = np.empty(n_arms)
 conversion_rate = np.empty(n_arms)
@@ -56,8 +49,8 @@ for i in range(n_arms):
         conversion_rate[i] = grouped_data['clicks'].iloc[i] / grouped_data['impressions'].iloc[i]
     else:
         conversion_rate[i] = 0
-print(conversion_rate)
-ts = Thompson_Bandit(n_arms, alpha_params, beta_params)
+
+ts = Thompson_Bandit(n_arms)
 rewards = []
 optimal_reward = np.max(conversion_rate)
 cumulative_regret = np.zeros(n_rounds)
@@ -70,13 +63,14 @@ for n in range(n_rounds):
 
     cumulative_regret[n] = (optimal_reward - conversion_rate[arm]) + (cumulative_regret[n - 1] if n > 0 else 0)
 
+np.savetxt('cumulative_regret_thompson', cumulative_regret)
 
 plt.figure(figsize=(16, 10))
 plt.bar(range(n_arms), ts.arm_counts)
 plt.title("Häufigkeit der Arm-Auswahl")
 plt.xlabel("Arm (Anzeige)")
 plt.ylabel("Anzahl der Ziehungen")
-plt.savefig('häufigkeit_arme_thompson.pdf')
+plt.savefig('häufigkeit_arme_thompson_normal.pdf')
 plt.show()
 
 
@@ -86,5 +80,5 @@ plt.title("Kumulierter Regret über Runden")
 plt.xlabel("Runden")
 plt.ylabel("Kumulierter Regret")
 plt.legend()
-plt.savefig('kumulierter_regret_thompson.pdf')
+plt.savefig('kumulierter_regret_thompson_normal.pdf')
 plt.show()

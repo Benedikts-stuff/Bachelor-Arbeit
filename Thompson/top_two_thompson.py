@@ -46,13 +46,14 @@ grouped_data = ad_data.groupby('campaign_id').agg({
 }).reset_index()
 
 n_arms = len(grouped_data['campaign_id'].unique())
-n_rounds = 1000
+n_rounds = 10000
 ts = ThompsonSampling(n_arms)
 
 # Wahrscheinlichkeiten der Conversion basierend auf den bisherigen Daten
 conversion_rates = grouped_data['clicks'].values / grouped_data['impressions'].values
 conversion_rates[np.isnan(conversion_rates)] = 0  # Setze NaN auf 0
-
+optimal_reward = np.max(conversion_rates)
+cumulative_regret = np.zeros(n_rounds)
 rewards = []
 
 for n in range(n_rounds):
@@ -63,6 +64,9 @@ for n in range(n_rounds):
 
     ts.update(chosen_arm, reward)
     rewards.append(reward)
+    cumulative_regret[n] = (optimal_reward - conversion_rates[chosen_arm]) + (cumulative_regret[n - 1] if n > 0 else 0)
+
+np.savetxt('cumulative_regret_two_thompson', cumulative_regret)
 
 # Ergebnisse visualisieren
 import matplotlib.pyplot as plt
@@ -75,7 +79,7 @@ plt.savefig('häufigkeit_arme_thompson.pdf')
 plt.show()
 
 plt.figure(figsize=(12, 6))
-plt.plot(np.cumsum(rewards), label='Kumulative Belohnung')
+plt.plot(cumulative_regret, label='Kumulativer regret')
 plt.title('Kumulative Belohnung über Runden')
 plt.xlabel('Runden')
 plt.ylabel('Kumulative Belohnung')
