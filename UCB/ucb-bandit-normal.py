@@ -42,13 +42,13 @@ grouped_data = ad_data.groupby('campaign_id').agg({
 }).reset_index()
 
 grouped_data['click_rate'] = grouped_data['clicks'] / grouped_data['impressions']
-print(grouped_data['campaign_id'])
+
 n_arms = len(grouped_data)  # Anpassen hier
-delta = 0.9
-n_rounds =100000
+n_rounds = 100000
+delta = 1/np.pow(n_rounds,2)
 reward_history = []
 bandit = UCB_Bandit(n_arms, delta)
-print(grouped_data['click_rate'])
+optimal_reward = np.zeros(n_rounds)
 # Simuliere die Runden
 for n in range(n_rounds):
     arm = bandit.select_arm()
@@ -56,15 +56,25 @@ for n in range(n_rounds):
     reward = click_rate
     bandit.update(arm, reward)
     reward_history.append(reward)
-
+    optimal_reward[n] = max(grouped_data['click_rate'])
 # Kumulativer Reward und Regret
 cumulative_reward = np.cumsum(reward_history)
-optimal_reward = np.zeros(n_rounds)
-for n in range(n_rounds):
-    optimal_reward[n] = max(grouped_data['click_rate'])
-cumulative_reward_opt = np.cumsum(optimal_reward)
-regret = np.maximum(cumulative_reward_opt - cumulative_reward, 0)
 
+diff = np.zeros(n_arms)
+for i in range(n_arms):
+    diff[i] = optimal_reward[i] - bandit.arm_reward_means[i]
+
+count = 0
+for i in range(n_arms):
+    if diff[i] > 0:
+        count = count + ((16 * np.log(n_rounds))/diff[i])
+
+formular = 3 * np.sum(diff) + count
+
+print('formular', formular)
+cumulative_reward_opt = np.cumsum(optimal_reward)
+regret = np.abs(cumulative_reward_opt - cumulative_reward)
+print(np.max(regret))
 # Plot kumulierter Reward
 plt.figure(figsize=(16, 10))
 plt.plot(cumulative_reward, label='Kumulativer Reward')
@@ -99,6 +109,15 @@ plt.title("Kumulative Regret über die Zeit")
 plt.xlabel("Runden")
 plt.ylabel("Regret")
 plt.savefig('cumulative_regret.pdf')
+plt.show()
+
+window_size = 1000
+rewards_smoothed = pd.Series(reward_history).rolling(window=window_size).mean()
+plt.figure(figsize=(16, 10))
+plt.plot(rewards_smoothed)
+plt.xlabel("Number of Draws")
+plt.ylabel("Reward per Draw")
+plt.title("Reward per Draw over Time")
 plt.show()
 
 print(bandit.arm_reward_means)
