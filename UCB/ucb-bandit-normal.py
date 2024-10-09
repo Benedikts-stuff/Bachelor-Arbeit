@@ -53,7 +53,7 @@ optimal_reward = np.zeros(n_rounds)
 for n in range(n_rounds):
     arm = bandit.select_arm()
     click_rate = grouped_data['click_rate'].iloc[arm]
-    reward = click_rate
+    reward = np.random.binomial(1, click_rate)
     bandit.update(arm, reward)
     reward_history.append(reward)
     optimal_reward[n] = max(grouped_data['click_rate'])
