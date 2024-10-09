@@ -13,7 +13,7 @@ class UCB_Bandit:
 
     def select_arm(self):
         if sum(self.arm_counts) == 0:
-            return np.random.randint(0, self.n_arms)  # Korrektur hier
+            return np.random.randint(0, self.n_arms)
 
         ucb_of_arms = np.full(self.n_arms, np.inf)
         for i in range(self.n_arms):
