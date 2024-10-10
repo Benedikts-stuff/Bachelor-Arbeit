@@ -13,7 +13,7 @@ class Thompson_sampling:
     def select_arm(self):
         samples = np.random.beta(self.alpha, self.beta)
 
-        return np.array(samples)
+        return np.argmax(samples)
 
     def update(self, arm, reward):
         self.total_clicks += reward
@@ -34,7 +34,26 @@ grouped_data['CTR'] = grouped_data['clicks'] / grouped_data['impressions']
 
 # Normalisierte CTR in die Spalte 'CTR' schreiben
 
+alpha = grouped_data['clicks']
+beta = grouped_data['impressions']
+
 n_arms = len(grouped_data)
 t_rounds = 100000
 
-true_conversion_rates = grouped_data['CTR']
+true_conversion_rates = grouped_data['CTR'].values
+reward_history = np.zeros((30,t_rounds))
+
+bandit = Thompson_sampling(n_arms)
+for i in range(30):
+    for n in range(t_rounds):
+        arm = bandit.select_arm()
+
+        reward = np.random.binomial(1, true_conversion_rates[arm])
+        reward_history[i][n] = reward
+
+        bandit.update(arm, reward)
+
+
+mean_rewards = np.mean(reward_history, axis=0)
+cumulative_reward = np.cumsum(mean_rewards)
+np.save('cumulative_reward', cumulative_reward)
