@@ -6,6 +6,8 @@ from sklearn.preprocessing import OneHotEncoder
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 
+
+
 class Sampler:
     def __init__(self, data_path):
         self.data_path = data_path
@@ -20,14 +22,14 @@ class Sampler:
 
         self.context_counts = self.encoded_data.groupby(self.age_col + self.gender_cols + self.interest_col).size().reset_index(name='count')
         self.total_counts = self.context_counts['count'].sum()
-        self.context_counts['probability'] = self.context_counts['count'] / self.total_counts
-
+        self.context_counts['probability'] = (self.context_counts['count'] / self.total_counts)
+        self.context_counts['probability'] = self.context_counts['probability'].to_numpy()
 
     def sample_context(self):
         # Kontextvektoren und Wahrscheinlichkeiten extrahieren
         contexts = list(zip(self.context_counts['age_30-34'],self.context_counts['age_35-39'] ,self.context_counts['age_40-44'],
                             self.context_counts['age_45-49'], self.context_counts['gender_F'], self.context_counts['gender_M'], self.context_counts['interest1']))
-        probabilities = self.context_counts['probability'].to_numpy()
+        probabilities = self.context_counts['probability']
 
         # Kontext basierend auf Wahrscheinlichkeiten auswählen
         sampled_context = np.random.choice(len(contexts), p=probabilities)

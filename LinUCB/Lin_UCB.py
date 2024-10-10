@@ -24,17 +24,17 @@ class LinUCB:
 
 
     def execute_UCB(self):
-        n_rounds = 100000
+        n_rounds = 10000
         for n in tqdm(range(n_rounds), desc='Processing'):
             inverse =np.linalg.inv(self.A)
             theta = np.dot(inverse, self.b)
-            probabilities = np.zeros(self.K)
+            ucb = np.zeros(self.K)
             rewards = np.zeros(self.K)
             contexts =[]
             for action in range(self.K):
                 contexts.append(self.sampler.sample_context())
-                probabilities[action] = np.dot(theta.T, contexts[action].values[0]) + (self.alpha * np.sqrt(np.dot(contexts[action], np.dot(inverse, contexts[action].values[0]))))
-            campaign = np.argmax(probabilities)
+                ucb[action] = np.dot(theta.T, contexts[action].values[0]) + (self.alpha * np.sqrt(np.dot(contexts[action], np.dot(inverse, contexts[action].values[0]))))
+            campaign = np.argmax(ucb)
             model = self.models[campaign]
             ctr = model.predict(contexts[campaign]).flatten()[0]
             rewards[campaign] = np.random.binomial(1, ctr)

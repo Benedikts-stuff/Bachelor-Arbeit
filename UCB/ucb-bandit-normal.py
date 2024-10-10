@@ -44,7 +44,7 @@ grouped_data = ad_data.groupby('campaign_id').agg({
 grouped_data['click_rate'] = grouped_data['clicks'] / grouped_data['impressions']
 
 n_arms = len(grouped_data)  # Anpassen hier
-n_rounds = 100000
+n_rounds = 10000
 delta = 1/np.pow(n_rounds,2)
 reward_history = []
 bandit = UCB_Bandit(n_arms, delta)
