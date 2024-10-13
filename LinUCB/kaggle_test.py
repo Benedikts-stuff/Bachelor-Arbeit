@@ -75,7 +75,6 @@ for i in range(0, n):
     # See what kind of result we get
     #rewards[i] = th[choices[i]].dot(x_i)  # using actual theta to figure out reward
     rewards[i] = th[choices[i]].dot(x_i)
-    rewards2[i] = ctr[choices[i]]
     # update the input vector
     A[choices[i]] += np.outer(x_i, x_i)
     b[choices[i]] += rewards[i] * x_i
@@ -87,17 +86,14 @@ plt.title("Frobeninus norm of estimated theta vs actual")
 plt.show()
 
 regret = (P.max(axis=1) - rewards)
-regret2 = (P.max(axis=1) - rewards2)
 plt.subplot(122)
 plt.plot(regret.cumsum(), label='linear model')
-plt.plot(regret2.cumsum(), label='fixed model')
 plt.title("Cumulative regret")
 plt.legend()
 plt.show()
 
 plt.subplot(122)
 plt.plot(rewards.cumsum(), label= 'linear_model')
-plt.plot(rewards2.cumsum(), label= 'fixed_ctr')
 plt.title("Cumulative reward")
 plt.legend()
 plt.show()
