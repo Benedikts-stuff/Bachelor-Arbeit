@@ -2,14 +2,18 @@ import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
-from sklearn.preprocessing import OneHotEncoder
+from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.preprocessing import OneHotEncoder, MinMaxScaler
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
 
 
 
 class Sampler:
-    def __init__(self, data_path):
+    def __init__(self, data_path, seed):
+        np.random.seed(seed)
+        self.scaler = MinMaxScaler()
         self.data_path = data_path
         self.data = pd.read_csv(self.data_path).drop(['reporting_start', 'reporting_end'], axis =1)
         self.encoded_data = pd.get_dummies(self.data, columns=['age', 'gender']).astype(int)
@@ -24,8 +28,17 @@ class Sampler:
         self.total_counts = self.context_counts['count'].sum()
         self.context_counts['probability'] = (self.context_counts['count'] / self.total_counts)
         self.context_counts['probability'] = self.context_counts['probability'].to_numpy()
+        self.fit_scaler()
+        self.context_counts['interest1'] = self.scaler.fit_transform(self.context_counts[['interest1']])
+
+    def fit_scaler(self):
+        features_to_scale = self.context_counts[['interest1']]
+        self.scaler.fit(features_to_scale)
+
+
 
     def sample_context(self):
+
         # Kontextvektoren und Wahrscheinlichkeiten extrahieren
         contexts = list(zip(self.context_counts['age_30-34'],self.context_counts['age_35-39'] ,self.context_counts['age_40-44'],
                             self.context_counts['age_45-49'], self.context_counts['gender_F'], self.context_counts['gender_M'], self.context_counts['interest1']))
@@ -35,7 +48,8 @@ class Sampler:
         sampled_context = np.random.choice(len(contexts), p=probabilities)
         column_names = ['age_30-34','age_35-39','age_40-44', 'age_45-49', 'gender_F', 'gender_M' ,'interest1']
         entry =contexts[sampled_context]
-        return pd.DataFrame([entry], columns= column_names)
+
+        return pd.DataFrame([entry], columns=column_names)
 
     def estimate_reward(self, action):
         y = 0
@@ -73,10 +87,28 @@ class Sampler:
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=34)
         # Modell trainieren
         model.fit(X_train, y_train)
+        pred = model.predict(X_test)
+        mse = mean_squared_error(y_test, pred)
+        r2 = r2_score(y_test, pred)
+
+        print(f"Mean Squared Error (MSE): {mse}")
+        print(f"R-squared: {r2}")
 
         return model
 
+    def estimate_reward_non_linear(self, action):
+        grouped_data = self.data.groupby('campaign_id').agg({
+            'clicks': 'sum',
+            'impressions': 'sum'
+        }).reset_index()
+        grouped_data['CTR'] = grouped_data['clicks'] / grouped_data['impressions']
+        return grouped_data['CTR'].iloc[action]
 
 
-#format data so that it is usable for the bandit
-sampler = Sampler('../facebook-ad-campaign-data.csv')
+sampler = Sampler('../facebook-ad-campaign-data.csv', 0)
+
+print(sampler.sample_context())
+sampler.estimate_reward(0)
+sampler.estimate_reward(1)
+sampler.estimate_reward(2)
+

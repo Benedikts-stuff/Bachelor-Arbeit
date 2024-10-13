@@ -36,7 +36,7 @@ grouped_data = ad_data.groupby('campaign_id').agg({
 }).reset_index()
 
 n_arms = len((grouped_data)['campaign_id'].unique())
-n_rounds = 10000
+n_rounds = 100000
 alpha_params = np.empty(n_arms)
 beta_params = np.empty(n_arms)
 conversion_rate = np.empty(n_arms)

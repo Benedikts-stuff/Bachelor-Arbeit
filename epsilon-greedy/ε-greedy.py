@@ -2,10 +2,6 @@ import pandas as pd
 import numpy as np
 import random
 
-from matplotlib import pyplot as plt
-
-from UCB.test import cumulative_reward
-
 
 class Epsilon_greedy_bandit:
     def __init__(self, epsilon, n, seed):
@@ -50,13 +46,10 @@ grouped_data['CTR'] = grouped_data['clicks'] / grouped_data['impressions']
 n_arms = len(grouped_data)
 t_rounds = 100000
 e = 0.1
-reward_history = np.zeros((30,t_rounds))
-
-optimal_click_rate = grouped_data['CTR'].max()
-optimal_rewards = np.random.binomial(1, optimal_click_rate, (30, t_rounds))
+reward_history = np.zeros((100,t_rounds))
 
 #play bandit
-for i in range(30):
+for i in range(100):
     bandit = Epsilon_greedy_bandit(e, n_arms, i)
 
     for n in range(t_rounds):
@@ -66,12 +59,8 @@ for i in range(30):
         bandit.update_means(arm, reward)
         reward_history[i][n] = reward
 
-mean_optimal = np.mean(optimal_rewards, axis=0)
-cumulative_reward_optimal = np.cumsum(mean_optimal)
-np.save('cumulative_reward_optimal', cumulative_reward_optimal)
-
-mean_rewards = np.mean(reward_history, axis=0)
-cumulative_reward = np.cumsum(mean_rewards)
+reward_all = np.cumsum(reward_history, axis=1)
+cumulative_reward = np.mean(reward_all, axis=0)
 
 np.save('cumulative_reward', cumulative_reward)
 

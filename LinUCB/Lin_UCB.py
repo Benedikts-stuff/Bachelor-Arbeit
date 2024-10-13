@@ -1,69 +1,86 @@
+from array import array
+
 import numpy as np
 import pandas as pd
-from tqdm import tqdm
 from matplotlib import pyplot as plt
-import warnings
-warnings.filterwarnings("ignore", category=DeprecationWarning)
-
-from LinUCB.parameter_extraction import sampler, Sampler
-
-class LinUCB:
-    def __init__(self, d, K, alpha):
-        self.d = d
-        self.K = K
-        self.alpha = alpha
-        self.A = np.eye(d)
-        self.b = np.zeros(d)
-        self.sampler = Sampler('../facebook-ad-campaign-data.csv')
-        self.action_counter = np.zeros(self.K)
-        self.model1 = sampler.estimate_reward(0)
-        self.model2 = sampler.estimate_reward(1)
-        self.model3 = sampler.estimate_reward(2)
-        self.models = [self.model1, self.model2, self.model3]
-        self.reward_history = []
 
 
-    def execute_UCB(self):
-        n_rounds = 10000
-        for n in tqdm(range(n_rounds), desc='Processing'):
-            inverse =np.linalg.inv(self.A)
-            theta = np.dot(inverse, self.b)
-            ucb = np.zeros(self.K)
-            rewards = np.zeros(self.K)
-            contexts =[]
-            for action in range(self.K):
-                contexts.append(self.sampler.sample_context())
-                ucb[action] = np.dot(theta.T, contexts[action].values[0]) + (self.alpha * np.sqrt(np.dot(contexts[action], np.dot(inverse, contexts[action].values[0]))))
-            campaign = np.argmax(ucb)
-            model = self.models[campaign]
-            ctr = model.predict(contexts[campaign]).flatten()[0]
-            rewards[campaign] = np.random.binomial(1, ctr)
+df = pd.read_csv('./data_linear.csv')
+X =
+grouped2= df.groupby(['age', 'gender', 'interest' ])
+context_counts = grouped2.size().reset_index(name='group_size')
+context_probs = context_counts['group_size'] / len(df)
 
-            self.action_counter[campaign] += 1
-            reward_a = rewards[campaign]
-            self.reward_history.append(reward_a)
-            self.A = self.A + np.dot(contexts[campaign], contexts[campaign].T)
-            self.b = self.b + (contexts[campaign].values[0] * reward_a)
+probs = context_probs.to_numpy()
+
+features = context_counts[[ 'age', 'gender', 'interest' ]].to_numpy()
 
 
-bandit = LinUCB(7, 3, 0.9)
-bandit.execute_UCB()
-print(bandit.action_counter)
 
-cumulative_rerward = np.cumsum(bandit.reward_history)
+np.random.seed(0)
+d = features.shape[1]
+n_a = df['campaign_id'].nunique()  # Anzahl der eindeutigen Kampagnen
+k= 3 # number of features
+n =5000
+idxs = [np.random.choice(len(grouped2), p=probs) for _ in range(n)]
+#D = np.random.random((n, k)) - 0.5
+D = np.zeros((n, k))
+for i in range(n):
+    D[i] = features[idxs[i]]
 
-plt.figure(figsize=(16, 10))
-plt.plot(cumulative_rerward)
-plt.title("Kumulative reward über die Zeit")
-plt.xlabel("Runden")
-plt.ylabel("reward")
-plt.savefig('cumulative_regret.pdf')
+D = D - 0.5
+#th = np.random.random((n_a, k)) - 0.5
+th = np.array([[ 0.25812542,  0.00331851, -0.32298334], [ 0.33253651,  0.01682478, 0.42691954], [ 0.47180655, 0.17512985, -0.18789989]])
+eps = 0.2
+choices = np.zeros(n, dtype=int)
+rewards = np.zeros(n)
+explore = np.zeros(n)
+norms = np.zeros(n)
+arm_count = np.zeros(n_a)
+b = np.zeros((n_a,k))
+A = np.zeros((n_a, k, k))
+for a in range(0, n_a):
+    A[a] = np.identity(k)
+th_hat = np.zeros((n_a, k))  # our temporary feature vectors, our best current guesses
+p = np.zeros(n_a)
+alph = 0.2
+#P = np.zeros((n, n_a))
+P = D.dot(th.T)
+# LINUCB, usign disjoint model
+# This is all from Algorithm 1, p 664, "A contextual bandit appraoch..." Li, Langford
+for i in range(0, n):
+    x_i = D[i] #features[idxs[i]] - 0.5 # the current context vector
+    #P[i] = x_i.dot(th.T)
+    for a in range(0, n_a):
+        A_inv = np.linalg.inv(A[a])  # we use it twice so cache it.
+        th_hat[a] = A_inv.dot(b[a])  # Line 5
+        #print(a, ': ', th_hat[a])
+        ta = x_i.dot(A_inv).dot(x_i)  # how informative is this?
+        a_upper_ci = alph * np.sqrt(ta)  # upper part of variance interval
+
+        a_mean = th_hat[a].dot(x_i)  # current estimate of mean
+        p[a] = a_mean + a_upper_ci
+    norms[i] = np.linalg.norm(th_hat - th, 'fro')  # diagnostic, are we converging?
+    # Let's hnot be biased with tiebraks, but add in some random noise
+    p = p + (np.random.random(len(p)) * 0.000001)
+    choices[i] = p.argmax()  # choose the highest, line 11
+    arm_count[choices[i]] += 1
+
+    # See what kind of result we get
+    rewards[i] = th[choices[i]].dot(x_i)  # using actual theta to figure out reward
+
+    # update the input vector
+    A[choices[i]] += np.outer(x_i, x_i)
+    b[choices[i]] += rewards[i] * x_i
+
+plt.figure(1, figsize=(10, 5))
+plt.subplot(121)
+plt.plot(norms)
+plt.title("Frobeninus norm of estimated theta vs actual")
 plt.show()
 
-plt.figure(figsize=(16, 10))
-plt.bar(range(3), bandit.action_counter)
-plt.title("action counter")
-plt.xlabel("Actions")
-plt.ylabel("Anzahl")
-plt.savefig('action_counter.pdf')
+regret = (P.max(axis=1) - rewards)
+plt.subplot(122)
+plt.plot(regret.cumsum())
+plt.title("Cumulative regret")
 plt.show()
