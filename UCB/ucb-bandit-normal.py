@@ -37,14 +37,14 @@ ad_data = pd.read_csv(data_path)
 # Gruppiere nach Anzeigen (campaign_id)
 grouped_data = ad_data.groupby('campaign_id').agg({
     'clicks': 'sum',
-    'total_conversion': 'sum',
     'impressions': 'sum'
 }).reset_index()
 
-grouped_data['click_rate'] = grouped_data['clicks'] / grouped_data['impressions']
+grouped_data['click_rate'] = (grouped_data['clicks'] / grouped_data['impressions']) * 1000
+#grouped_data['click_rate'] = (grouped_data['click_rate']) / grouped_data['click_rate'].max()
 
 n_arms = len(grouped_data)  # Anpassen hier
-n_rounds = 10000
+n_rounds = 1000
 delta = 1/np.pow(n_rounds,2)
 reward_history = []
 bandit = UCB_Bandit(n_arms, delta)

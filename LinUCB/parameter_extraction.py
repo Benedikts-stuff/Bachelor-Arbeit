@@ -1,13 +1,12 @@
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
-from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import LinearRegression, Ridge
 from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.preprocessing import OneHotEncoder, MinMaxScaler
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
-
 
 
 class Sampler:
@@ -16,50 +15,44 @@ class Sampler:
         self.scaler = MinMaxScaler()
         self.data_path = data_path
         self.data = pd.read_csv(self.data_path).drop(['reporting_start', 'reporting_end'], axis =1)
-        self.encoded_data = pd.get_dummies(self.data, columns=['age', 'gender']).astype(int)
-        self.age_col = self.encoded_data.columns[self.encoded_data.columns.str.contains('age')].tolist()
-        self.interest_col = [col for col in self.encoded_data.columns if 'interest1' in col]
-        self.gender_cols = self.encoded_data.columns[self.encoded_data.columns.str.contains('gender')].tolist()
-        self.campaign_916 = self.encoded_data[self.encoded_data['campaign_id'] == 916]
-        self.campaign_936 = self.encoded_data[self.encoded_data['campaign_id'] == 936]
-        self.campaign_1178 = self.encoded_data[self.encoded_data['campaign_id'] == 1178]
+        self.data['gender'] = self.data['gender'].map({'M': 1, 'F': 0})
+        self.data['age'] = self.data['age'].map({'30-34': 0, '35-39': 1, '40-44': 2, '45-49': 3})
+        #self.data = pd.get_dummies(self.data, columns=['age'], drop_first=True)
+        self.grouped_context = self.data.groupby(['age']).agg({
+                                        'clicks': 'sum',
+                                         'impressions': 'sum'
+                                        }).reset_index()
 
-        self.context_counts = self.encoded_data.groupby(self.age_col + self.gender_cols + self.interest_col).size().reset_index(name='count')
-        self.total_counts = self.context_counts['count'].sum()
-        self.context_counts['probability'] = (self.context_counts['count'] / self.total_counts)
-        self.context_counts['probability'] = self.context_counts['probability'].to_numpy()
-        self.fit_scaler()
-        self.context_counts['interest1'] = self.scaler.fit_transform(self.context_counts[['interest1']])
+        self.grouped_context['ctr'] = (self.grouped_context['clicks'] / self.grouped_context['impressions']) * 1000
+        self.features = self.grouped_context.drop(columns=['clicks', 'impressions', 'ctr']).to_numpy()
 
-    def fit_scaler(self):
-        features_to_scale = self.context_counts[['interest1']]
-        self.scaler.fit(features_to_scale)
+        self.campaign_916 = self.data[self.data['campaign_id'] == 916]
+        self.campaign_936 = self.data[self.data['campaign_id'] == 936]
+        self.campaign_1178 = self.data[self.data['campaign_id'] == 1178]
 
+    #return array with all possible feature vectors
+    def get_features(self):
+        return self.features
 
+    # return vector with probabilities of the occurence of each context (index in this array of a context probability should match the index in features)
+    def get_context_probs(self):
+        grouped_context = self.data.groupby(['age', 'gender'])
+        context_counts = grouped_context.size().reset_index(name='group_size')
+        context_probs_df = context_counts['group_size'] / len(self.data)
 
-    def sample_context(self):
+        probs = context_probs_df.to_numpy()
+        return probs
 
-        # Kontextvektoren und Wahrscheinlichkeiten extrahieren
-        contexts = list(zip(self.context_counts['age_30-34'],self.context_counts['age_35-39'] ,self.context_counts['age_40-44'],
-                            self.context_counts['age_45-49'], self.context_counts['gender_F'], self.context_counts['gender_M'], self.context_counts['interest1']))
-        probabilities = self.context_counts['probability']
-
-        # Kontext basierend auf Wahrscheinlichkeiten auswählen
-        sampled_context = np.random.choice(len(contexts), p=probabilities)
-        column_names = ['age_30-34','age_35-39','age_40-44', 'age_45-49', 'gender_F', 'gender_M' ,'interest1']
-        entry =contexts[sampled_context]
-
-        return pd.DataFrame([entry], columns=column_names)
-
-    def estimate_reward(self, action):
+    # return linear model that eastimates the reward given the context vector for a specific campaign
+    def get_model(self, action):
         y = 0
         X= pd.DataFrame()
         if(action == 0):
-            grouped = self.campaign_916.groupby(['age_30-34','age_35-39','age_40-44', 'age_45-49', 'gender_F', 'gender_M' ,'interest1']).agg({
+            grouped = self.campaign_916.groupby(['age', 'gender', 'interest1', 'interest2']).agg({
                 'clicks': 'sum',
                 'impressions': 'sum'
             }).reset_index()
-            X =  grouped[['age_30-34','age_35-39','age_40-44', 'age_45-49', 'gender_F', 'gender_M' ,'interest1']]
+            X =  grouped[['age','gender', 'interest1','interest2']]
 
             y = pd.DataFrame(grouped['clicks'] / grouped['impressions'], columns=['CTR'])
 
@@ -84,7 +77,7 @@ class Sampler:
 
         model = LinearRegression()
 
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=34)
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.4, random_state=34)
         # Modell trainieren
         model.fit(X_train, y_train)
         pred = model.predict(X_test)
@@ -96,19 +89,7 @@ class Sampler:
 
         return model
 
-    def estimate_reward_non_linear(self, action):
-        grouped_data = self.data.groupby('campaign_id').agg({
-            'clicks': 'sum',
-            'impressions': 'sum'
-        }).reset_index()
-        grouped_data['CTR'] = grouped_data['clicks'] / grouped_data['impressions']
-        return grouped_data['CTR'].iloc[action]
 
 
 sampler = Sampler('../facebook-ad-campaign-data.csv', 0)
-
-print(sampler.sample_context())
-sampler.estimate_reward(0)
-sampler.estimate_reward(1)
-sampler.estimate_reward(2)
-
+model0 = sampler.get_model(0)

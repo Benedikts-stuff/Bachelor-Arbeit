@@ -50,13 +50,13 @@ for a in range(0, n_a):
 th_hat = np.zeros((n_a, k))  # our temporary feature vectors, our best current guesses
 p = np.zeros(n_a)
 alph = 0.2
-#P = np.zeros((n, n_a))
-P = D.dot(th.T)
+P = np.zeros((n, n_a))
+#P = D.dot(th.T)
 # LINUCB, usign disjoint model
 # This is all from Algorithm 1, p 664, "A contextual bandit appraoch..." Li, Langford
 for i in range(0, n):
     x_i = D[i] #features[idxs[i]] - 0.5 # the current context vector
-    #P[i] = x_i.dot(th.T)
+    P[i] = x_i.dot(th.T)
     for a in range(0, n_a):
         A_inv = np.linalg.inv(A[a])  # we use it twice so cache it.
         th_hat[a] = A_inv.dot(b[a])  # Line 5

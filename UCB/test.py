@@ -40,7 +40,7 @@ grouped_data['CTR'] = grouped_data['clicks'] / grouped_data['impressions']
 n_arms = len(grouped_data)
 t_rounds = 1000
 
-delta = 1
+delta = 1/ np.pow(t_rounds,2)
 
 arm_count = np.zeros(n_arms)
 
@@ -80,6 +80,4 @@ plt.title("Durchschnittlicher regret über die Zeit")
 plt.xlabel("Runden")
 plt.ylabel("Regret")
 plt.legend()  # Legende anzeigen
-
-plt.savefig('regret.pdf')  # Speichern als PDF
 plt.show()
