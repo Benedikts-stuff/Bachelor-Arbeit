@@ -93,6 +93,9 @@ for i in range(0, n):
     A[choices[i]] += np.outer(x_i, x_i)
     b[choices[i]] += rewards[i] * x_i
 
+
+
+
 plt.figure(1, figsize=(10, 5))
 plt.subplot(121)
 plt.plot(norms)

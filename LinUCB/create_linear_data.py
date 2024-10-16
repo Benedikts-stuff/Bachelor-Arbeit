@@ -46,7 +46,7 @@ df = pd.DataFrame({
     'age':  X_scaled[:, 0],
     'gender': X_scaled[:, 1],
     'interest': X_scaled[:, 2],
-     'ctr': ctr
+     'ctr': linear_ctr
 })
 df.to_csv('data_linear.csv', index=False)
 
