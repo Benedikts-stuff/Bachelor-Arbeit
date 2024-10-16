@@ -33,18 +33,15 @@ class UCB_Bandit:
 # Lade die Daten
 data_path = '../facebook-ad-campaign-data.csv'
 ad_data = pd.read_csv(data_path)
-
+ad_data['click_rate'] = (ad_data['clicks'] / ad_data['impressions']) *1000
 # Gruppiere nach Anzeigen (campaign_id)
-grouped_data = ad_data.groupby('campaign_id').agg({
-    'clicks': 'sum',
-    'impressions': 'sum'
-}).reset_index()
+grouped_data = ad_data.groupby('campaign_id')['click_rate'].mean().reset_index()
 
-grouped_data['click_rate'] = (grouped_data['clicks'] / grouped_data['impressions']) * 1000
+#grouped_data['click_rate'] = (grouped_data['clicks'] / grouped_data['impressions']) * 1000
 #grouped_data['click_rate'] = (grouped_data['click_rate']) / grouped_data['click_rate'].max()
 
 n_arms = len(grouped_data)  # Anpassen hier
-n_rounds = 1000
+n_rounds = 100000
 delta = 1/np.pow(n_rounds,2)
 reward_history = []
 bandit = UCB_Bandit(n_arms, delta)
@@ -53,7 +50,7 @@ optimal_reward = np.zeros(n_rounds)
 for n in range(n_rounds):
     arm = bandit.select_arm()
     click_rate = grouped_data['click_rate'].iloc[arm]
-    reward = np.random.binomial(1, click_rate)
+    reward = click_rate
     bandit.update(arm, reward)
     reward_history.append(reward)
     optimal_reward[n] = max(grouped_data['click_rate'])
@@ -74,6 +71,7 @@ formular = 3 * np.sum(diff) + count
 print('formular', formular)
 cumulative_reward_opt = np.cumsum(optimal_reward)
 regret = np.abs(cumulative_reward_opt - cumulative_reward)
+print('cumu reward', cumulative_reward[n_rounds-1])
 print(np.max(regret))
 # Plot kumulierter Reward
 plt.figure(figsize=(16, 10))

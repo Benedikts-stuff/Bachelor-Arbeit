@@ -35,7 +35,10 @@ for i in range(n):
 
 D = D - 0.5
 #th = np.random.random((n_a, k)) - 0.5
-th = np.array([[ 0.25812542,  0.00331851, -0.32298334], [ 0.33253651,  0.01682478, 0.42691954], [ 0.47180655, 0.17512985, -0.18789989]])
+th2 = np.array([[ 0.25812542,  0.00331851, -0.32298334], [ 0.33253651,  0.01682478, 0.42691954], [ 0.47180655, 0.17512985, -0.18789989]])
+th = np.array([[-0.58948293,  0.85853578,  0.01412974],
+       [ 0.44559418,  0.09203317,  0.0317637 ],
+       [ 0.4316183 , -0.68225067,  0.95054073]])
 eps = 0.2
 choices = np.zeros(n, dtype=int)
 rewards = np.zeros(n)
@@ -68,13 +71,13 @@ for i in range(0, n):
         p[a] = a_mean + a_upper_ci
     norms[i] = np.linalg.norm(th_hat - th, 'fro')  # diagnostic, are we converging?
     # Let's hnot be biased with tiebraks, but add in some random noise
-    p = p + (np.random.random(len(p)) * 0.000001)
+    p = p + (np.random.random(len(p)) * 0.1)
     choices[i] = p.argmax()  # choose the highest, line 11
     arm_count[choices[i]] += 1
 
     # See what kind of result we get
     #rewards[i] = th[choices[i]].dot(x_i)  # using actual theta to figure out reward
-    rewards[i] = th[choices[i]].dot(x_i)
+    rewards[i] = th2[choices[i]].dot(x_i)
     # update the input vector
     A[choices[i]] += np.outer(x_i, x_i)
     b[choices[i]] += rewards[i] * x_i
