@@ -1,6 +1,6 @@
 from matplotlib import pyplot as plt
 from sklearn.linear_model import LinearRegression
-
+import pdb
 import numpy as np
 import pandas as pd
 from sklearn.metrics import mean_squared_error
@@ -33,32 +33,60 @@ class Test_corr():
             'interest': interest
         })
 
-        if correlation_level == 'weak':
-            self.data['ctr'] = 0.2 * self.data['age'] + 0.2 * self.data['gender'] + 0.2 * self.data['interest'] + np.random.normal(0, 0.1, num_samples)
-        if correlation_level == 'medium':
-            self.data['ctr'] = 0.5 * self.data['age'] + 0.5 * self.data['gender'] + 0.5 * self.data['interest'] + np.random.normal(0, 0.1, num_samples)
-        if correlation_level == 'strong':
-            self.data['ctr'] = 0.8 * self.data['age'] + 0.8 * self.data['gender'] + 0.8 * self.data['interest'] + np.random.normal(0, 0.1, num_samples)
+        #if correlation_level == 'weak':
+            #self.data['ctr'] = 0.2 * self.data['age'] + 0.2 * self.data['gender'] + 0.2 * self.data['interest'] + np.random.normal(0, 0.1, num_samples)
+        #if correlation_level == 'medium':
+            #self.data['ctr'] = 0.5 * self.data['age'] + 0.5 * self.data['gender'] + 0.5 * self.data['interest'] + np.random.normal(0, 0.1, num_samples)
+        #if correlation_level == 'strong':
+            #self.data['ctr'] = 0.8 * self.data['age'] + 0.8 * self.data['gender'] + 0.8 * self.data['interest'] + np.random.normal(0, 0.1, num_samples)
 
 
-
-
-        self.scaler.fit_transform(self.data[['age', 'gender', 'interest']])
-
-        if correlation_level == 'no':
-            self.data['ctr'] = np.random.normal(0.5, 0.1, num_samples) + + np.random.normal(0, 0.1, num_samples)
-            #correlation=self.data.corr()
-            #print("Correlation: ", correlation['ctr'])
-
-        self.data['ctr'] = self.scaler2.fit_transform(self.data[['ctr']])
         data_916 = self.data[self.data['campaign_id'] == 0]
         data_936 = self.data[self.data['campaign_id'] == 1]
         data_1178 = self.data[self.data['campaign_id'] == 2]
-        #self.data.loc[self.data['campaign_id'] == 1, 'ctr'] *= 1.1
-        mean_gr = self.data.groupby('campaign_id')['ctr'].mean()
-        self.means = mean_gr.values
 
-        data_936.loc[:, 'ctr'] = data_936['ctr'] * 1.5
+        data_916 = pd.DataFrame(self.scaler.fit_transform(data_916), columns = self.data.columns)
+        data_936 = pd.DataFrame(self.scaler.fit_transform(data_936), columns = self.data.columns)
+        data_1178 = pd.DataFrame(self.scaler.fit_transform(data_1178), columns = self.data.columns)
+
+        if correlation_level == 'weak':
+            data_916['ctr'] = 0.6 * data_916['age'] + 0.3 * data_916['gender'] + 0.3 * data_916['interest'] + np.random.normal(0, 0.5, len(data_916))
+            data_936['ctr'] = 0.3 * data_936['age'] + 0.6 * data_936['gender'] + 0.3 * data_936['interest'] + np.random.normal(0, 0.5, len(data_936))
+            data_1178['ctr'] = 0.3 * data_1178['age'] + 0.3 * data_1178['gender'] + 0.6 * data_1178['interest'] + np.random.normal(0, 0.5, len(data_1178))
+
+        if correlation_level == 'medium':
+            data_916['ctr'] = 0.6 * data_916['age'] + 0.3 * data_916['gender'] + 0.3 * data_916['interest'] + np.random.normal(0, 0.2, len(data_916))
+            data_936['ctr'] = 0.3 * data_936['age'] + 0.6 * data_936['gender'] + 0.3 * data_936['interest'] + np.random.normal(0, 0.2, len(data_936))
+            data_1178['ctr'] = 0.3 * data_1178['age'] + 0.3 * data_1178['gender'] + 0.6 * data_1178['interest'] + np.random.normal(0, 0.2, len(data_1178))
+
+
+        if correlation_level == 'strong':
+            data_916['ctr'] = 0.6 * data_916['age'] + 0.3 * data_916['gender'] + 0.3 * data_916['interest']# + np.random.normal(0, 0.05, len(data_916))
+            data_936['ctr'] = 0.3 * data_936['age'] + 0.6* data_936['gender'] + 0.3 * data_936['interest'] #+ np.random.normal(0, 0.05, len(data_936))
+            data_1178['ctr'] = 0.3 * data_1178['age'] + 0.3 * data_1178['gender'] + 0.6 * data_1178['interest'] #+ np.random.normal(0, 0.05, len(data_1178))
+
+        if correlation_level == 'no':
+            data_916['ctr'] = np.random.normal(0.5, 0.1, len(data_916))  + np.random.normal(0, 0.1, len(data_916))
+            data_936['ctr'] = np.random.normal(0.5, 0.1, len(data_936))  + np.random.normal(0, 0.1, len(data_936))
+            data_1178['ctr'] = np.random.normal(0.5, 0.1, len(data_1178))  + np.random.normal(0, 0.1, len(data_1178))
+
+
+        data_916['ctr'] = self.scaler2.fit_transform(data_916[['ctr']])
+        data_936['ctr'] = self.scaler2.fit_transform(data_936[['ctr']])
+        data_1178['ctr'] = self.scaler2.fit_transform(data_1178[['ctr']])
+
+        #data_916['ctr'] = self.scaler2.fit_transform(data_916[['ctr']])
+        #data_936['ctr'] = self.scaler2.fit_transform(data_936[['ctr']])
+        #data_1178['ctr'] = self.scaler2.fit_transform(data_1178[['ctr']])
+
+
+
+        #self.data.loc[self.data['campaign_id'] == 1, 'ctr'] *= 1.1
+
+        #data_936.loc[:, 'ctr'] = data_936['ctr'] * 1.5
+
+        self.means = np.array([data_916['ctr'].mean(), data_936['ctr'].mean(), data_1178['ctr'].mean()] )
+
 
         data_916 = data_916.groupby(['age', 'gender', 'interest'])['ctr'].mean().reset_index()
 
@@ -152,12 +180,12 @@ class Test_corr():
         r2_1178 = model_1178.score(X_test_scaled_1178, y_test_1178)
 
         # Ausgabe der Ergebnisse
-        print("Mean Squared Error (MSE):", mse_916)
-        print("Mean Squared Error (MSE):", mse_936)
-        print("Mean Squared Error (MSE):", mse_1178)
-        print("R²-Wert:", r2_916)
-        print("R²-Wert:", r2_936)
-        print("R²-Wert:", r2_1178)
+        #print("Mean Squared Error (MSE):", mse_916)
+        #print("Mean Squared Error (MSE):", mse_936)
+        #print("Mean Squared Error (MSE):", mse_1178)
+        #print("R²-Wert:", r2_916)
+        #print("R²-Wert:", r2_936)
+        #print("R²-Wert:", r2_1178)
 
 
         return [model_916, model_936, model_1178]
@@ -193,7 +221,7 @@ class LinUCB:
     def __init__(self, models, samples):
         self.n_a = 3
         self.k = 4
-        self.n = 100000
+        self.n = 10000
         self.models = [model for sublist in models for model in sublist]
         self.th = np.array([np.concatenate(([model.intercept_], model.coef_)) for model in self.models])
         self.features = np.array([np.concatenate(([1], arr)) for arr in samples])
@@ -227,7 +255,7 @@ class LinUCB:
                 # print(a, ': ', th_hat[a])
                 ta = x_i.dot(A_inv).dot(x_i)  # how informative is this?
                 a_upper_ci = self.alph * np.sqrt(ta)  # upper part of variance interval
-
+                #pdb.set_trace()
                 a_mean = self.th_hat[a].dot(x_i)  # current estimate of mean
                 #print(a, ': ' , a_mean)
                 self.p[a] = a_mean + a_upper_ci
@@ -289,7 +317,7 @@ class UCB_Bandit:
 corr = Test_corr()
 model_weak = corr.generate_data('weak')
 means_weak = corr.means
-means_weak[1] = means_weak[1] * 1.5
+#means_weak[1] = means_weak[1] * 1.5
 max_mean = means_weak.max()
 ucb_bandit = UCB_Bandit(n_arms=3, delta=0.5, seed=42, means=means_weak, t_rounds=100000)
 ucb_bandit.execute()
@@ -340,8 +368,8 @@ plt.subplot(122)
 plt.plot(regret_weak.cumsum(), label='weak')
 plt.plot(regret_medium.cumsum(), label='medium')
 plt.plot(regret_strong.cumsum(), label='strong')
-plt.plot(regret_no.cumsum(), label='no')
-plt.plot(cumulative_regret_UCB, label='ucb')
+#plt.plot(regret_no.cumsum(), label='no')
+#plt.plot(cumulative_regret_UCB, label='ucb')
 plt.title("Cumulative regret")
 plt.legend()
 plt.show()
@@ -350,8 +378,8 @@ plt.subplot(122)
 plt.plot(bandit_weak.rewards.cumsum(), label='weak')
 plt.plot(bandit_medium.rewards.cumsum(), label='medium')
 plt.plot(bandit_strong.rewards.cumsum(), label='strong')
-plt.plot(bandit_no.rewards.cumsum(), label='no')
-plt.plot(ucb_cumulative_reward, label='ucb')
+#plt.plot(bandit_no.rewards.cumsum(), label='no')
+#plt.plot(ucb_cumulative_reward, label='ucb')
 plt.title("Cumulative reward")
 plt.legend()
 plt.show()
