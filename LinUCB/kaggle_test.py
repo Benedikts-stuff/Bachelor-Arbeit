@@ -22,18 +22,17 @@ d = features.shape[1]
 n_a = df['campaign_id'].nunique()  # Anzahl der eindeutigen Kampagnen
 k= 3 # number of features
 n =1000
-idxs = [np.random.choice(len(grouped2), p=probs) for _ in range(n)]
+#idxs = [np.random.choice(len(grouped2), p=probs) for _ in range(n)]
 #D = np.random.random((n, k)) - 0.5
-D = np.zeros((n, k))
-for i in range(n):
-    D[i] = features[idxs[i]]
+#D = np.zeros((n, k))
+#for i in range(n):
+#   D[i] = features[idxs[i]]
 
-D = D - 0.5
-#th = np.random.random((n_a, k)) - 0.5
-th2 = np.array([[ 0.25812542,  0.00331851, -0.32298334], [ 0.33253651,  0.01682478, 0.42691954], [ 0.47180655, 0.17512985, -0.18789989]])
-th = np.array([[-0.58948293,  0.85853578,  0.01412974],
-       [ 0.44559418,  0.09203317,  0.0317637 ],
-       [ 0.4316183 , -0.68225067,  0.95054073]])
+#D = D - 0.5
+D = np.random.random((n, k)) - 0.5
+th = np.random.random((n_a, k)) - 0.5
+#th2 = np.array([[ 0.25812542,  0.00331851, -0.32298334], [ 0.33253651,  0.01682478, 0.42691954], [ 0.47180655, 0.17512985, -0.18789989]])
+#th = np.array([[-0.58948293,  0.85853578,  0.01412974], [ 0.44559418,  0.09203317,  0.0317637 ],[ 0.4316183 , -0.68225067,  0.95054073]])
 eps = 0.2
 choices = np.zeros(n, dtype=int)
 rewards = np.zeros(n)
@@ -48,13 +47,13 @@ for a in range(0, n_a):
 th_hat = np.zeros((n_a, k))  # our temporary feature vectors, our best current guesses
 p = np.zeros(n_a)
 alph = 0.2
-P = np.zeros((n, n_a))
-#P = D.dot(th.T)
+#P = np.zeros((n, n_a))
+P = D.dot(th.T)
 # LINUCB, usign disjoint model
 # This is all from Algorithm 1, p 664, "A contextual bandit appraoch..." Li, Langford
 for i in range(0, n):
     x_i = D[i] #features[idxs[i]] - 0.5 # the current context vector
-    P[i] = x_i.dot(th.T)
+    #P[i] = x_i.dot(th.T)
     for a in range(0, n_a):
         A_inv = np.linalg.inv(A[a])  # we use it twice so cache it.
         th_hat[a] = A_inv.dot(b[a])  # Line 5

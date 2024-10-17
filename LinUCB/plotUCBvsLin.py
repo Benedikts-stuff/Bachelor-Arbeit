@@ -50,14 +50,14 @@ class Test_corr():
         data_1178 = pd.DataFrame(self.scaler.fit_transform(data_1178), columns = self.data.columns)
 
         if correlation_level == 'weak':
-            data_916['ctr'] = 0.6 * data_916['age'] + 0.3 * data_916['gender'] + 0.3 * data_916['interest'] + np.random.normal(0, 0.5, len(data_916))
-            data_936['ctr'] = 0.3 * data_936['age'] + 0.6 * data_936['gender'] + 0.3 * data_936['interest'] + np.random.normal(0, 0.5, len(data_936))
-            data_1178['ctr'] = 0.3 * data_1178['age'] + 0.3 * data_1178['gender'] + 0.6 * data_1178['interest'] + np.random.normal(0, 0.5, len(data_1178))
+            data_916['ctr'] = 0.6 * data_916['age'] + 0.3 * data_916['gender'] + 0.3 * data_916['interest'] + np.random.normal(0.0, 0.5, len(data_916))
+            data_936['ctr'] = 0.3 * data_936['age'] + 0.6 * data_936['gender'] + 0.3 * data_936['interest'] + np.random.normal(0.0, 0.5, len(data_936))
+            data_1178['ctr'] = 0.3 * data_1178['age'] + 0.3 * data_1178['gender'] + 0.6 * data_1178['interest'] + np.random.normal(0.0, 0.5, len(data_1178))
 
         if correlation_level == 'medium':
-            data_916['ctr'] = 0.6 * data_916['age'] + 0.3 * data_916['gender'] + 0.3 * data_916['interest'] + np.random.normal(0, 0.2, len(data_916))
-            data_936['ctr'] = 0.3 * data_936['age'] + 0.6 * data_936['gender'] + 0.3 * data_936['interest'] + np.random.normal(0, 0.2, len(data_936))
-            data_1178['ctr'] = 0.3 * data_1178['age'] + 0.3 * data_1178['gender'] + 0.6 * data_1178['interest'] + np.random.normal(0, 0.2, len(data_1178))
+            data_916['ctr'] = 0.6 * data_916['age'] + 0.3 * data_916['gender'] + 0.3 * data_916['interest'] + np.random.normal(0.0, 0.2, len(data_916))
+            data_936['ctr'] = 0.3 * data_936['age'] + 0.6 * data_936['gender'] + 0.3 * data_936['interest'] + np.random.normal(0.0, 0.2, len(data_936))
+            data_1178['ctr'] = 0.3 * data_1178['age'] + 0.3 * data_1178['gender'] + 0.6 * data_1178['interest'] +np.random.normal(0.0, 0.2, len(data_1178))
 
 
         if correlation_level == 'strong':
@@ -210,7 +210,7 @@ class Test_corr():
         probs = context_probs_df.to_numpy()
 
         # 1000 Kontexte basierend auf den Wahrscheinlichkeiten ziehen
-        chosen_indices = np.random.choice(len(contexts), size=100000, p=probs)
+        chosen_indices = np.random.choice(len(contexts), size=1000000, p=probs)
         #chosen_contexts = contexts[chosen_indices]
         chosen_contexts = contexts.iloc[chosen_indices].values
 
@@ -218,10 +218,10 @@ class Test_corr():
 
 
 class LinUCB:
-    def __init__(self, models, samples):
+    def __init__(self, models, samples, alpha):
         self.n_a = 3
         self.k = 4
-        self.n = 10000
+        self.n = 1000000
         self.models = [model for sublist in models for model in sublist]
         self.th = np.array([np.concatenate(([model.intercept_], model.coef_)) for model in self.models])
         self.features = np.array([np.concatenate(([1], arr)) for arr in samples])
@@ -242,7 +242,7 @@ class LinUCB:
 
         self.th_hat = np.zeros((self.n_a, self.k))  # our temporary feature vectors, our best current guesses
         self.p = np.zeros(self.n_a)
-        self.alph = 0.2
+        self.alph = alpha
         self.P = self.D.dot(self.th.T)
 
     def run_LinUCB(self):
@@ -319,7 +319,7 @@ model_weak = corr.generate_data('weak')
 means_weak = corr.means
 #means_weak[1] = means_weak[1] * 1.5
 max_mean = means_weak.max()
-ucb_bandit = UCB_Bandit(n_arms=3, delta=0.5, seed=42, means=means_weak, t_rounds=100000)
+ucb_bandit = UCB_Bandit(n_arms=3, delta=0.5, seed=42, means=means_weak, t_rounds=1000000)
 ucb_bandit.execute()
 
 
@@ -329,10 +329,10 @@ data_medium = corr.generate_data('medium')
 data_strong = corr.generate_data('strong')
 data_no = corr.generate_data('no')
 context = corr.sample_contexts()
-bandit_weak = LinUCB(models=[data_weak], samples=context)
-bandit_medium = LinUCB(models=[data_medium], samples=context)
-bandit_strong = LinUCB(models=[data_strong], samples=context)
-bandit_no = LinUCB(models=[data_no], samples=context)
+bandit_weak = LinUCB(models=[data_weak], samples=context, alpha=1.2)
+bandit_medium = LinUCB(models=[data_medium], samples=context, alpha=1.5)
+bandit_strong = LinUCB(models=[data_strong], samples=context, alpha=0.5)
+bandit_no = LinUCB(models=[data_no], samples=context, alpha=0.5)
 bandit_weak.run_LinUCB()
 bandit_medium.run_LinUCB()
 bandit_strong.run_LinUCB()
@@ -368,8 +368,8 @@ plt.subplot(122)
 plt.plot(regret_weak.cumsum(), label='weak')
 plt.plot(regret_medium.cumsum(), label='medium')
 plt.plot(regret_strong.cumsum(), label='strong')
-#plt.plot(regret_no.cumsum(), label='no')
-#plt.plot(cumulative_regret_UCB, label='ucb')
+plt.plot(regret_no.cumsum(), label='no')
+plt.plot(cumulative_regret_UCB, label='ucb')
 plt.title("Cumulative regret")
 plt.legend()
 plt.show()
@@ -378,8 +378,8 @@ plt.subplot(122)
 plt.plot(bandit_weak.rewards.cumsum(), label='weak')
 plt.plot(bandit_medium.rewards.cumsum(), label='medium')
 plt.plot(bandit_strong.rewards.cumsum(), label='strong')
-#plt.plot(bandit_no.rewards.cumsum(), label='no')
-#plt.plot(ucb_cumulative_reward, label='ucb')
+plt.plot(bandit_no.rewards.cumsum(), label='no')
+plt.plot(ucb_cumulative_reward, label='ucb')
 plt.title("Cumulative reward")
 plt.legend()
 plt.show()

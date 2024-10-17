@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+from sklearn.preprocessing import MinMaxScaler
 
 # Set random seed for reproducibility
 #np.random.seed(42)
@@ -38,16 +39,17 @@ for i in range(n_samples):
         linear_ctr[i] = X_scaled[i] @ weights_campaign_2
 
 # Füge Rauschen (Noise) hinzu, um realistischere Daten zu erzeugen
-#ctr = np.clip(linear_ctr, 0.1, 1)
-
+ctr = np.clip(linear_ctr, 0.1, 1)
+minmax = MinMaxScaler()
 # Erstelle ein DataFrame mit den Features und der berechneten CTR
 df = pd.DataFrame({
     'campaign_id': campaign_id,
     'age':  X_scaled[:, 0],
     'gender': X_scaled[:, 1],
     'interest': X_scaled[:, 2],
-     'ctr': linear_ctr
+     'ctr':ctr
 })
+#df['ctr'] = minmax.fit_transform(df[['ctr']])
 df.to_csv('data_linear.csv', index=False)
 
 # Beispiel-Ausgabe der ersten Zeilen des Datensatzes
