@@ -1,7 +1,5 @@
-from array import array
 
 import numpy as np
-import pandas as pd
 from matplotlib import pyplot as plt
 
 from tempp import Get_linear_model
@@ -28,7 +26,7 @@ straight = np.array([0.1801471369890952,
 0.16501501497368395,
 0.12853849875116444
 ])
-n_a = df['campaign_id'].nunique()  # Anzahl der eindeutigen Kampagnen
+n_a = df['campaign_id'].nunique()
 k= 5 # number of features
 n =100000
 
@@ -58,7 +56,7 @@ b = np.zeros((n_a,k))
 A = np.zeros((n_a, k, k))
 for a in range(0, n_a):
     A[a] = np.identity(k)
-th_hat = np.zeros((n_a, k))  # our temporary feature vectors, our best current guesses
+th_hat = np.zeros((n_a, k))
 p = np.zeros(n_a)
 alph = 0.2
 #P = np.zeros((n, n_a))
@@ -66,30 +64,28 @@ P = D.dot(th.T)
 # LINUCB, usign disjoint model
 # This is all from Algorithm 1, p 664, "A contextual bandit appraoch..." Li, Langford
 for i in range(0, n):
-    x_i = D[i] #features[idxs[i]] - 0.5 # the current context vector
-    #P[i] = [model.predict(x_i.reshape(1, -1))[0] for model in th]
-    for a in range(0, n_a):
-        A_inv = np.linalg.inv(A[a])  # we use it twice so cache it.
-        th_hat[a] = A_inv.dot(b[a])  # Line 5
-        #print(a, ': ', th_hat[a])
-        ta = x_i.dot(A_inv).dot(x_i)  # how informative is this?
-        a_upper_ci = alph * np.sqrt(ta)  # upper part of variance interval
+    x_i = D[i]
 
-        a_mean = th_hat[a].dot(x_i)  # current estimate of mean
+    for a in range(0, n_a):
+        A_inv = np.linalg.inv(A[a])
+        th_hat[a] = A_inv.dot(b[a])
+        #print(a, ': ', th_hat[a])
+        ta = x_i.dot(A_inv).dot(x_i)
+        a_upper_ci = alph * np.sqrt(ta)
+
+        a_mean = th_hat[a].dot(x_i)
         print(a, ': ', a_mean)
         p[a] = a_mean + a_upper_ci
-    norms[i] = np.linalg.norm(th_hat - th, 'fro')  # diagnostic, are we converging?
-    # Let's hnot be biased with tiebraks, but add in some random noise
+    norms[i] = np.linalg.norm(th_hat - th, 'fro')
+
     #p = p + (np.random.random(len(p)) * 0.000001)
-    choices[i] = p.argmax()  # choose the highest, line 11
+    choices[i] = p.argmax()
     arm_count[choices[i]] += 1
 
     rewards[i] = th[choices[i]].dot(x_i)
-    # See what kind of result we get
     #rewards[i] = straight[choices[i]]
     #model_i = th2[choices[i]]
     #rewards[i] = model_i.predict(x_i.reshape(1, -1))[0]
-    # update the input vector
     A[choices[i]] += np.outer(x_i, x_i)
     b[choices[i]] += rewards[i] * x_i
 

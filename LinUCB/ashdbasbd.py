@@ -7,10 +7,10 @@ class UCB_Bandit:
     def __init__(self, n_arms, delta, seed):
         self.seed = seed
         np.random.seed(seed)
-        self.n_arms = n_arms  # Anzahl der Arme
-        self.delta = delta  # Parameter für den Konfidenzbonus
-        self.arm_counts = np.zeros(n_arms)  # Zählungen für jeden Arm
-        self.arm_reward_means = np.zeros(n_arms)  # Durchschnittliche Belohnung für jeden Arm
+        self.n_arms = n_arms
+        self.delta = delta
+        self.arm_counts = np.zeros(n_arms)
+        self.arm_reward_means = np.zeros(n_arms)
 
 
     def select_arm(self):

@@ -4,9 +4,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression, Ridge
 from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.preprocessing import OneHotEncoder, MinMaxScaler
-from sklearn.compose import ColumnTransformer
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import StandardScaler
+
 
 
 class Sampler:
@@ -30,11 +28,11 @@ class Sampler:
         self.campaign_936 = self.data[self.data['campaign_id'] == 936]
         self.campaign_1178 = self.data[self.data['campaign_id'] == 1178]
 
-    #return array with all possible feature vectors
+
     def get_features(self):
         return self.features
 
-    # return vector with probabilities of the occurence of each context (index in this array of a context probability should match the index in features)
+
     def get_context_probs(self):
         grouped_context = self.data.groupby(['age', 'gender'])
         context_counts = grouped_context.size().reset_index(name='group_size')
@@ -43,7 +41,7 @@ class Sampler:
         probs = context_probs_df.to_numpy()
         return probs
 
-    # return linear model that eastimates the reward given the context vector for a specific campaign
+
     def get_model(self, action):
         y = 0
         X= pd.DataFrame()

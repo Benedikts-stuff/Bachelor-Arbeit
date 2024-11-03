@@ -74,39 +74,37 @@ grouped_data = df.groupby('campaign_id').agg({
 grouped_data['CTR'] = grouped_data['clicks'] / grouped_data['impressions']
 ctr2 = grouped_data['CTR'].to_numpy()
 
-# Wahrscheinlichkeiten in ein Array umwandeln
+
 probs = context_probs.to_numpy()
 
-# Parameter für LinUCB festlegen
+
 
 d = features.shape[1]
-K = df['campaign_id'].nunique()  # Anzahl der eindeutigen Kampagnen
-
-# LinUCB-Algorithmus initialisieren
+K = df['campaign_id'].nunique()
 
 
-# Simulation über mehrere zufällige Schritte (T)
-T = 500000  # Anzahl der Runden, in denen der Algorithmus laufen soll
+
+T = 500000
 reward_history = np.zeros((10, 500000))
 arm_count = np.zeros(3)
 for i in tqdm(range(10), desc='Processing'):
     linucb = LinUCB(0.0000001, d, K)
     np.random.seed(i)
     for t in range(T):
-        # Zufälligen Kontext (x_t) basierend auf der Häufigkeit samplen
-        idx = np.random.choice(len(grouped2), p=probs)  # Sample basierend auf den Wahrscheinlichkeiten
-        x_t = features[idx]  # Kontextvektor
+
+        idx = np.random.choice(len(grouped2), p=probs)
+        x_t = features[idx]
         chosen_arm = linucb.select_arm(x_t)
 
-        # Belohnung ist 1, wenn clicks > 0, sonst 0
+
         reward_t = np.random.binomial(1, ctr2[chosen_arm])
         arm_count[chosen_arm] += 1
         reward_history[i][t] = reward_t
 
-        # Update des LinUCB Algorithmus
+
         linucb.update(chosen_arm, x_t, reward_t)
 
-# Kumulierte Belohnung berechnen
+
 reward_all = np.cumsum(reward_history, axis=1)
 cumulative_reward = np.mean(reward_all, axis=0)
 np.save('cumulative_reward2', cumulative_reward)
