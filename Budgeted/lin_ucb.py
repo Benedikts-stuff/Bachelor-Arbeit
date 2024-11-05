@@ -1,79 +1,72 @@
 import numpy as np
 from matplotlib import pyplot as plt
 
+
 np.random.seed(42)
+n = 2500 # number of data points
+k = 3 # number of features
+n_a = 3 # number of actions
+D = np.random.random((n, k)) - 0.5 # our data, or these are the contexts, there are n contexts, each has k features
+th = np.array([[0.1, 0.2, 0.3], [0.2, 0.3, 0.2], [0.5, 0.2, 0.3]])# our real theta, what we will try to guess (there are 8 arms, and each has 30 features)
 
-class LinUCB:
-    def __init__(self, models, alpha, n_rounds, context):
-        self.n_a = 3
-        self.k = 3
-        self.n = n_rounds
-        self.th = models
-        self.features = context
-        self.d = self.features.shape[1]
-        self.D = context
+budget = 1000
+true_cost= np.array([0.8, 1, 0.6])
 
-        self.choices = np.zeros(self.n, dtype=int)
-        self.rewards = np.zeros(self.n)
-        self.explore = np.zeros(self.n)
-        self.norms = np.zeros(self.n)
-        self.arm_count = np.zeros(self.n_a)
-        self.b = np.zeros((self.n_a, self.k))
-        self.A = np.zeros((self.n_a, self.k, self.k))
-        for a in range(0, self.n_a):
-            self.A[a] = np.identity(self.k)
+P = D.dot(th.T)
+optimal = P.max(axis=1)
+plt.subplot(2, 1, 1)
+plt.title("Distribution of ideal arm choices")
+fig = plt.hist(optimal, bins=range(0, n_a))
 
-        self.lamda = 1
-        self.m_2 = np.linalg.norm(self.th, axis=1)
-        self.th_hat = np.zeros((self.n_a, self.k))
-        self.p = np.zeros(self.n_a)
-        self.alpha = alpha
-        self.P = self.D.dot(self.th.T)
-    def run_LinUCB(self):
-        for i in range(0, self.n):
-            x_i = self.D[i]
+eps = 0.2
+optimal_reward = []
+choices = np.zeros(n, dtype=int)
+rewards = np.zeros(n)
+explore = np.zeros(n)
+norms = np.zeros(n)
+b = np.zeros_like(th)
+A = np.zeros((n_a, k, k))
+for a in range(0, n_a):
+    A[a] = np.identity(k)
+th_hat = np.zeros_like(th)  # our temporary feature vectors, our best current guesses
+p = np.zeros(n_a)
+alph = 0.2
 
-            for a in range(0, self.n_a):
-                A_inv = np.linalg.inv(self.A[a])
-                self.th_hat[a] = A_inv.dot(self.b[a])
-                ta = x_i.dot(A_inv).dot(x_i)
-                a_upper_ci = self.alpha * np.sqrt(ta)
-                a_mean = self.th_hat[a].dot(x_i)
-                self.p[a] = a_mean + a_upper_ci
-            self.norms[i] = np.linalg.norm(self.th_hat - self.th, 'fro')
+# LINUCB, usign disjoint model
+# This is all from Algorithm 1, p 664, "A contextual bandit appraoch..." Li, Langford
+for i in range(0, n):
+    x_i = D[i]  # the current context vector
+    for a in range(0, n_a):
+        A_inv = np.linalg.inv(A[a])  # we use it twice so cache it.
+        th_hat[a] = A_inv.dot(b[a])  # Line 5
+        ta = x_i.dot(A_inv).dot(x_i)  # how informative is this?
+        a_upper_ci = alph * np.sqrt(ta)  # upper part of variance interval
 
-            self.p = self.p + (np.random.random(len(self.p)) * 0.000001)
-            self.choices[i] = self.p.argmax()
-            self.arm_count[self.choices[i]] += 1
-            self.rewards[i] = self.th[self.choices[i]].dot(x_i)
+        a_mean = th_hat[a].dot(x_i)  # current estimate of mean
+        p[a] = (a_mean + a_upper_ci) / true_cost[a]
+    norms[i] = np.linalg.norm(th_hat - th, 'fro')  # diagnostic, are we converging?
+    # Let's hnot be biased with tiebraks, but add in some random noise
+    p = p + (np.random.random(len(p)) * 0.000001)
+    choices[i] = p.argmax()  # choose the highest, line 11
 
-            self.A[self.choices[i]] += np.outer(x_i, x_i)
-            self.b[self.choices[i]] += self.rewards[i] * x_i
+    # See what kind of result we get
+    rewards[i] = P[i, choices[i]] / true_cost[choices[i]]  # using actual theta to figure out reward
+    idx = np.argmax(P[i] / true_cost)
+    # update the input vector
+    A[choices[i]] += np.outer(x_i, x_i)
+    b[choices[i]] +=  P[i, choices[i]] * x_i
 
-
-# Set parameters
-num_features = 3
-num_rounds = 2500
-true_weights = np.array([[0.1, 0.2, 0.3], [0.2, 0.3, 0.2], [0.5, 0.2, 0.3]])
-context = np.random.rand(num_rounds, num_features)
-bandit_lin_ucb = LinUCB(true_weights, 0.5, num_rounds, context)
-bandit_lin_ucb.run_LinUCB()
+    optimal_reward.append(P[i,idx] / true_cost[idx])
 
 
-#LinUCB
 plt.figure(1, figsize=(10, 5))
-plt.subplot(121)
-#plt.plot(bandit_weak.norms, label='Weak')
-#plt.plot(bandit_medium.norms, label='Medium')
-plt.plot(bandit_lin_ucb.norms, label='Strong')
-#plt.plot(bandit_no.norms, label='no')
+plt.subplot(2, 1, 2)
+plt.plot(norms)
 plt.title("Frobeninus norm of estimated theta vs actual")
-plt.legend()
-plt.show()
 
-regret_strong = (bandit_lin_ucb.P.max(axis=1) - bandit_lin_ucb.rewards)
-plt.subplot(122)
-plt.plot(regret_strong.cumsum(), label='strong')
+regret = (optimal_reward - rewards)
+plt.subplot(2, 2, 2)
+plt.plot(regret.cumsum())
 plt.title("Cumulative regret")
-plt.legend()
+
 plt.show()
