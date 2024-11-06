@@ -4,90 +4,125 @@ import matplotlib.pyplot as plt
 
 np.random.seed(42)
 
+
 class ThompsonSamplingContextualBandit:
     def __init__(self, d, v, n_arms, n_rounds, contexts, true_weights, cost, budget):
         """
         d: Dimension der Kontextvektoren
         v: Varianzparameter für die Normalverteilung
-        B: Kovarianz Matrix
+        n_arms: Anzahl der Arme
+        n_rounds: Anzahl der Runden
+        contexts: Kontextdaten für jede Runde
+        true_weights: Wahre Gewichtungen für jeden Arm
+        cost: Kosten pro Arm
+        budget: Gesamtbudget
         """
         self.n_features = d
-        self.v = v
+        self.variance = v
         self.n_arms = n_arms
         self.n_rounds = n_rounds
-        self.B =np.array([np.identity(self.n_features) for _ in range(self.n_arms)])
+        self.contexts = contexts
+        self.true_weights = true_weights
+        self.cost = np.array(cost)
+        self.budget = budget
+        self.max_cost = np.max(self.cost)
+        self.arm_counts = np.zeros(self.n_arms)
+        self.gamma = 0.00000001
+        self.cum = np.zeros(self.n_arms)
+
+        self.empirical_cost_means = np.random.rand(self.n_arms)
+
+        # Initialisiere die Parameter für jeden Arm
+        self.B = np.array([np.identity(self.n_features) for _ in range(self.n_arms)])
         self.f = [np.zeros(self.n_features) for _ in range(self.n_arms)]
         self.mu_hat = [np.zeros(self.n_features) for _ in range(self.n_arms)]
 
-
-        self.optimal_reward = []
-        self.budget = budget
-        self.cost = np.array(cost)
-        self.max_cost = np.max(self.cost)
-        self.contexts = contexts
-        self.true_weights = true_weights
+        # Historie der beobachteten Belohnungen und optimalen Belohnungen
         self.observed_reward_history = []
-        self.actual_reward_history = self.contexts.dot(self.true_weights.T)#[self.true_weights[i].T * self.contexts for i in range(self.n_arms)]
+        self.optimal_reward = []
+
+        # Berechne die tatsächlichen Belohnungen für jede Runde und jeden Arm
+        self.actual_reward_history = self.compute_actual_rewards()
+
+    def compute_actual_rewards(self):
+        """
+        Berechnet die tatsächlichen Belohnungen basierend auf den wahren Gewichtungen und den Kontexten.
+        """
+        return self.contexts.dot(self.true_weights.T)
 
     def sample_mu(self):
-        return np.array([np.random.multivariate_normal(self.mu_hat[i], self.v ** 2 * np.linalg.inv(self.B[i])) for i in range(self.n_arms)])
+        """
+        Samplet Schätzungen der Gewichte (mu) aus einer Multinormalverteilung.
+        """
+        return np.array([
+            np.random.multivariate_normal(self.mu_hat[arm], self.variance ** 2 * np.linalg.inv(self.B[arm]))
+            for arm in range(self.n_arms)
+        ])
 
-    def update(self, reward, chosen_arm, context):
+
+    def select_arm(self, sampled_mu, context):
+        """
+        Wählt den Arm mit dem höchsten erwarteten Belohnungs-Kosten-Verhältnis.
+        """
+        expected_rewards = np.array([np.dot(sampled_mu[arm], context) for arm in range(self.n_arms)])
+        return np.argmax(expected_rewards / (self.empirical_cost_means + self.gamma))
+
+    def calculate_optimal_reward(self, context):
+        """
+        Berechnet die optimale Belohnung für den gegebenen Kontext.
+        """
+        rewards = np.array([np.dot(self.true_weights[arm], context) for arm in range(self.n_arms)])
+        return [np.max(np.array(rewards / self.cost)),np.argmax(np.array(rewards / self.cost))]
+
+    def update_beliefs(self, reward, chosen_arm, context):
+        """
+        Aktualisiert die Schätzungen (mu_hat) und die Kovarianzmatrix (B) für den gewählten Arm.
+        """
         self.B[chosen_arm] += np.outer(context, context)
         self.f[chosen_arm] += reward * context
         self.mu_hat[chosen_arm] = np.linalg.inv(self.B[chosen_arm]).dot(self.f[chosen_arm])
         self.budget -= self.cost[chosen_arm]
 
+        self.cum[chosen_arm] += np.random.binomial(1, self.cost[chosen_arm])
+        self.empirical_cost_means[chosen_arm] = self.cum[chosen_arm] / (self.arm_counts[chosen_arm] + 1)
+
+        self.arm_counts[chosen_arm] += 1
+
     def run(self):
+        """
+        Führt den Thompson-Sampling-Algorithmus aus, bis das Budget aufgebraucht ist.
+        """
         i = 0
         while self.budget > self.max_cost:
             context = self.contexts[i]
             sampled_mu = self.sample_mu()
-            expected_rewards = [np.dot(sampled_mu[i], context) for i in range(self.n_arms)]
-            chosen_arm = np.argmax(expected_rewards / self.cost)
+            chosen_arm = self.select_arm(sampled_mu, context)
             actual_reward = np.dot(self.true_weights[chosen_arm], context)
 
-            self.update(actual_reward, chosen_arm, context)
-            self.observed_reward_history.append(actual_reward/ self.cost[chosen_arm])
+            self.update_beliefs(actual_reward, chosen_arm, context)
+            self.observed_reward_history.append(actual_reward / self.cost[chosen_arm])
+            x = self.calculate_optimal_reward(context)
+            self.optimal_reward.append(x[0])
 
-            test = [np.dot(self.true_weights[arm], context) for arm in range(self.n_arms)] / self.cost
-            max = np.max(test)
-            self.optimal_reward.append(max)
+            if(chosen_arm != x[1]): print("false")
+
             i += 1
 
-#set parameters
+
+# Parameter festlegen
 num_arms = 3
 num_features = 3
-num_rounds = 2500
-true_cost= np.array([0.8, 1, 0.6])
-budget = 1000
-true_weights = np.array([[0.1, 0.2, 0.3], [0.2, 0.3, 0.2], [0.5, 0.2, 0.3]])
-context = np.random.rand(num_rounds, num_features)
-v = 0.6
+num_rounds = 100000
+true_cost = np.array([0.8, 1, 0.6])
+budget = 1500
+true_weights = np.array([[0.5, 0.1, 0.2], [0.1, 0.5, 0.2], [0.2, 0.1, 0.5]])
+contexts = np.random.rand(num_rounds, num_features)
+variance = 0.2
 
-#run the bandit
-bandit = ThompsonSamplingContextualBandit(num_features, v, num_arms, num_rounds, context, true_weights, true_cost, budget)
+# Algorithmus ausführen
+bandit = ThompsonSamplingContextualBandit(num_features, variance, num_arms, num_rounds, contexts, true_weights,
+                                          true_cost, budget)
 bandit.run()
 
 #plot regret
 regret = np.array(bandit.optimal_reward) - np.array(bandit.observed_reward_history)
-
-# Plot der kumulierten Belohnung
-plt.subplot(2, 1, 1)
-plt.plot(np.cumsum(bandit.optimal_reward), label="Optimal Kumulative Belohnung", color='red')
-plt.plot(np.cumsum(bandit.observed_reward_history), label="Kumulative Belohnung", color='blue')
-plt.xlabel("Runden")
-plt.ylabel("Kumulative Belohnung")
-plt.title("Kumulative Belohnung über Zeit")
-plt.legend()
-
-# Plot des Regret
-plt.subplot(2, 1, 2)
-plt.plot(np.cumsum(regret), label="Regret", color='red')
-plt.xlabel("Runden")
-plt.ylabel("Regret")
-plt.title("Regret über Zeit")
-plt.legend()
-
-plt.tight_layout()
-plt.show()
