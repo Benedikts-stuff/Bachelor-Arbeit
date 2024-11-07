@@ -26,9 +26,9 @@ bandit_eg.run()
 
 # Plot des Regret
 plt.subplot(2, 1, 2)
-plt.plot(np.cumsum(np.array(bandit.optimal_reward) - np.array(bandit.observed_reward_history)), label="Regret", color='red')
-plt.plot(np.cumsum(np.array(np.array(bandit_eg.optimal_reward) - np.array(bandit_eg.observed_reward_history))), label="Regret", color='blue')
-plt.plot(np.cumsum(ucb_bandit.optimal_reward) - np.cumsum(ucb_bandit.rewards[:len(ucb_bandit.optimal_reward)]), label="Regret", color='grey')
+plt.plot(np.cumsum(np.array(bandit.optimal_reward) - np.array(bandit.observed_reward_history)), label="Regret Budgeted Thompson", color='red')
+plt.plot(np.cumsum(np.array(np.array(bandit_eg.optimal_reward) - np.array(bandit_eg.observed_reward_history))), label="Regret Budgeted Epsilon Greedy", color='blue')
+plt.plot(np.cumsum(ucb_bandit.optimal_reward) - np.cumsum(ucb_bandit.rewards[:len(ucb_bandit.optimal_reward)]), label="Regret Budgeted Lin UCB", color='grey')
 plt.xlabel("Runden")
 plt.ylabel("Regret")
 plt.title("Regret über Zeit")
