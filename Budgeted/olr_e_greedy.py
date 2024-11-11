@@ -11,7 +11,7 @@ class EpsilonGreedyContextualBandit:
         d: Dimension der Kontextvektoren
         epsilon: Wahrscheinlichkeit für Exploration
         """
-        np.random.seed(42)
+        np.random.seed(seed)
         self.repetition = repetition
         self.logger = logger
         self.n_features = d

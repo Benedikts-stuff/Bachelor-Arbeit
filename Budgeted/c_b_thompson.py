@@ -17,7 +17,7 @@ class ThompsonSamplingContextualBandit:
         cost: Kosten pro Arm
         budget: Gesamtbudget
         """
-        np.random.seed(42)
+        np.random.seed(seed)
         self.logger = logger
         self.repetition = repetition
         self.n_features = d

@@ -208,7 +208,7 @@ class Runner:
             # Bandits initialisieren und Experimente durchführen
             logger1 = BanditLogger()
             self.greedy_bandit = EpsilonGreedyContextualBandit(
-                self.num_features, 1, self.num_arms, self.context, true_weights, true_cost, self.budget, logger1, i, i
+                self.num_features, 0.1, self.num_arms, self.context, true_weights, true_cost, self.budget, logger1, i, i
             )
             self.greedy_bandit.run()
             df1 = logger1.get_dataframe()
@@ -216,11 +216,9 @@ class Runner:
 
             logger2 = BanditLogger()
             self.thompson_bandit = ThompsonSamplingContextualBandit(
-                self.num_features, 0.1, self.num_arms, self.context, true_weights, true_cost, self.budget, logger2, i, i
+                self.num_features, 1, self.num_arms, self.context, true_weights, true_cost, self.budget, logger2, i, i
             )
             self.thompson_bandit.run()
-            print('muHat TS', self.thompson_bandit.mu_hat)
-            print('mu true', true_weights)
 
             df2 = logger2.get_dataframe()
             all_data2.append(df2)
