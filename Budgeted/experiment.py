@@ -1,6 +1,7 @@
 import numpy as np
 import pyarrow.parquet as pq
 import pandas as pd
+import pylab as pl
 import seaborn as sns
 from matplotlib import pyplot as plt
 
@@ -40,6 +41,10 @@ IS_OUR_APPROACH = "our_approach"
 APPROACH_ORDER = "order"
 NORMALIZED_REGRET = "Normalized Regret"
 
+BGREEDY = "B-Greedy"
+LINUCB = "Linear BUCB"
+OMEGAUCB = "Omega BUCB"
+THOMPSON = "Linear TS"
 
 all_ids = [
     REP,
@@ -61,6 +66,13 @@ all_ids = [
 #    TIME,
     NORMALIZED_SPENT_BUDGET,
 #   APPROACH_ORDER
+]
+
+algorithms= [
+BGREEDY,
+LINUCB,
+OMEGAUCB,
+THOMPSON
 ]
 
 
@@ -192,28 +204,32 @@ class Runner:
         self.logger =BanditLogger()
         self.df1 = pd.DataFrame(all_ids)
         self.df2 = pd.DataFrame(all_ids)
+        self.epsilon = np.array([0.05, 0.025, 0.1, 0.15, 0.125, 0.075, 0.09, 0.175])
+        self.alpha = np.array([0.1, 0.2, 0.3])
 
     def run_experiment(self):
         all_data1 = []  # Liste für die Daten von EpsilonGreedy
         all_data2 = []  # Liste für die Daten von Thompson Sampling
+        all_data3 = []  # Liste für die Daten von LinUCB
+        all_data4 = []  # Liste für die Daten von OmegaUCB
 
         for i in tqdm(range(self.iterations)):
             np.random.seed(i)  # Verwende den Iterationsindex, um die Zufälligkeit zu variieren
 
             true_weights = np.random.rand(self.num_arms, self.num_features)
             true_cost = np.random.uniform(0.1, 1, self.num_arms)
-            #epsilon = [0.05, 0.1, 0.075, 0.025]
-            #alpha = [0.1, 0.2, 0.3]
 
             # Bandits initialisieren und Experimente durchführen
+            #Epsilon Greedy
             logger1 = BanditLogger()
             self.greedy_bandit = EpsilonGreedyContextualBandit(
-                self.num_features, 0.1, self.num_arms, self.context, true_weights, true_cost, self.budget, logger1, i, i
+                self.num_features, np.random.choice(self.epsilon), self.num_arms, self.context, true_weights, true_cost, self.budget, logger1, i, i
             )
             self.greedy_bandit.run()
             df1 = logger1.get_dataframe()
             all_data1.append(df1)
 
+            #Thompson sampling
             logger2 = BanditLogger()
             self.thompson_bandit = ThompsonSamplingContextualBandit(
                 self.num_features, 1, self.num_arms, self.context, true_weights, true_cost, self.budget, logger2, i, i
@@ -223,34 +239,98 @@ class Runner:
             df2 = logger2.get_dataframe()
             all_data2.append(df2)
 
-        # Alle Daten nach den Iterationen zusammenführen
-        self.df1 = pd.concat(all_data1, ignore_index=True)
-        self.df2 = pd.concat(all_data2, ignore_index=True)
+            #LinUCB
+            logger3 = BanditLogger()
+            self.lin_ucb= LinUCB(
+                self.num_arms, self.num_features, self.context, true_weights, true_cost, np.random.choice(self.alpha), self.budget, logger3, i, i
+            )
+            self.lin_ucb.run()
 
-    def plot_budget_normalised_regret(self):
+            df3 = logger3.get_dataframe()
+            all_data3.append(df3)
+
+
+            #OmegaLinUCB
+            logger4 = BanditLogger()
+            self.omega_lin_ucb= OmegaUCB(
+                self.num_arms, self.num_features, self.context, true_weights, true_cost, np.random.choice(self.alpha), self.budget, logger4, i, i
+            )
+            self.omega_lin_ucb.run()
+
+            df4 = logger4.get_dataframe()
+            all_data4.append(df4)
+
+        # Alle Daten nach den Iterationen zusammenführen
+        #self.df1 = pd.concat(all_data1, ignore_index=True)
+        #self.df2 = pd.concat(all_data2, ignore_index=True)
+        plot_data = np.array([self.interp_plot(all_data1), self.interp_plot(all_data2), self.interp_plot(all_data3), self.interp_plot(all_data4)])
+        self.plot_budget_normalised_regret(plot_data)
+
+    def plot_budget_normalised_regret(self, plot_data):
         # Angenommen, df ist dein DataFrame
         #eg_data = self.df[self.df[APPROACH] == 0]
         #ts_data = self.df[self.df[APPROACH] == 1]
-        sns.lineplot(x=NORMALIZED_SPENT_BUDGET, y=REGRET, data=self.df1, hue=REP)
 
-        # Plot konfigurieren
-        plt.xlabel('Normalized Budget')
-        plt.ylabel('Cumulative Regret')
-        plt.title('Regret Plot e-greedy')
-
+        pl.ylim(0,500)
+        i = 0
+        for line in plot_data:
+            plt.plot(line[0], line[1], '--', color='red', label=algorithms[i])
+            i +=1
+        plt.xlabel(NORMALIZED_SPENT_BUDGET)
+        plt.ylabel(REGRET)
+        plt.legend()
         plt.show()
 
-        sns.lineplot(x=NORMALIZED_SPENT_BUDGET, y=REGRET, data=self.df2, hue=REP)
+        #sns.lineplot(x=NORMALIZED_SPENT_BUDGET, y=REGRET, data=self.df1, hue=REP)
 
         # Plot konfigurieren
-        plt.xlabel('Normalized Budget')
-        plt.ylabel('Cumulative Regret')
-        plt.title('Regret Plot ts')
+        #plt.xlabel('Normalized Budget')
+        #plt.ylabel('Cumulative Regret')
+        #plt.ylim(0,3000)
+        #plt.title('Regret Plot e-greedy')
+
+        #plt.show()
+
+        #sns.lineplot(x=NORMALIZED_SPENT_BUDGET, y=REGRET, data=self.df2, hue=REP)
+
+        # Plot konfigurieren
+        #plt.xlabel('Normalized Budget')
+        #plt.ylabel('Cumulative Regret')
+        #plt.title('Regret Plot ts')
 
         # Zeige den Plot an
-        plt.show()
+        #plt.show()
 
-runner = Runner(10)
+    def interp_plot(self, dfs, x_col=NORMALIZED_SPENT_BUDGET, y_col=REGRET):
+        # Liste der Achsen-Daten erstellen
+        axis_list = []
+        for df in dfs:
+            data = df[[x_col, y_col]].sort_values(by=x_col).drop_duplicates(x_col).to_numpy()
+            axis_list.append(data)
+
+        # Minimum und Maximum für jeden Datensatz finden
+        min_max_xs = [(min(axis[:, 0]), max(axis[:, 0])) for axis in axis_list]
+        new_axis_xs = [np.linspace(0, 1, 100) for min_x, max_x in min_max_xs]
+
+        # Interpolierte Y-Werte berechnen
+        new_axis_ys = [np.interp(new_x_axis, axis[:, 0], axis[:, 1]) for axis, new_x_axis in
+                       zip(axis_list, new_axis_xs)]
+
+        # Mittelwert der X- und Y-Werte berechnen
+        midx = [np.mean([new_axis_xs[axis_idx][i] for axis_idx in range(len(axis_list))]) for i in range(100)]
+        midy = [np.mean([new_axis_ys[axis_idx][i] for axis_idx in range(len(axis_list))]) for i in range(100)]
+
+        # Plot für jeden Durchlauf und den Durchschnitt erstellen
+        #for axis in axis_list:
+           # plt.plot(axis[:, 0], axis[:, 1], color='black', alpha=0.3)
+        return np.array([midx, midy])
+        #pl.ylim(0,500)
+        #plt.plot(midx, midy, '--', color='red', label='Interpolierter Mittelwert')
+        #plt.xlabel(x_col)
+        #plt.ylabel(y_col)
+        #plt.legend()
+        #plt.show()
+
+runner = Runner(4)
 runner.run_experiment()
-runner.plot_budget_normalised_regret()
 

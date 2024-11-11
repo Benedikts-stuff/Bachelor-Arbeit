@@ -1,11 +1,10 @@
 import numpy as np
 from matplotlib import pyplot as plt
 
-np.random.seed(42)
 
 
 class OmegaUCB:
-    def __init__(self, n_actions, n_features, contexts, true_theta, cost, alpha=0.2, budget=1500):
+    def __init__(self, n_actions, n_features, contexts, true_theta, cost, alpha, budget, logger, repetition, seed):
         """
         Initialize the LinUCB instance with parameters.
 
@@ -17,6 +16,7 @@ class OmegaUCB:
         alpha: Exploration parameter for the upper confidence bound.
         budget: Total budget for playing arms.
         """
+        np.random.seed(seed)
         self.n_actions = n_actions
         self.n_features = n_features
         self.contexts = contexts - 0.5
@@ -24,6 +24,7 @@ class OmegaUCB:
         self.cost = cost
         self.alpha = alpha
         self.budget = budget
+        self.og_budget = budget
         self.cum = np.zeros(self.n_actions)
         self.arm_counts = np.zeros(self.n_actions)
         self.gamma = 0.00000001
@@ -31,6 +32,10 @@ class OmegaUCB:
         self.empirical_cost_means = np.random.rand(self.n_actions)
         self.z = 1
         self.p = 0.95
+        self.repetition = repetition
+        self.logger = logger
+        self.summed_regret = 0
+
 
         # Initialize variables
         self.A = np.array([np.identity(n_features) for _ in range(n_actions)])  # Covariance matrices for each arm
@@ -128,12 +133,23 @@ class OmegaUCB:
 
             # Update rewards and norms
             self.rewards[i] = actual_reward
-            self.optimal_reward.append(true_rewards[i, optimal_arm] / self.cost[optimal_arm])
+            opt_rew = true_rewards[i, optimal_arm] / self.cost[optimal_arm]
+            self.optimal_reward.append(opt_rew)
             self.norms[i] = np.linalg.norm(self.theta_hat - self.true_theta, 'fro')
 
             # Update parameters for the chosen arm
             self.update_parameters(chosen_arm, context, true_rewards[i, chosen_arm])
             self.choices[i] = chosen_arm
+
+            self.summed_regret += opt_rew - actual_reward
+
+            self.logger.track_rep(self.repetition)
+            self.logger.track_approach(0)
+            self.logger.track_round(i)
+            self.logger.track_regret(self.summed_regret)
+            self.logger.track_normalized_budget((self.og_budget - self.budget)/ self.og_budget)
+            self.logger.track_spent_budget(self.og_budget - self.budget)
+            self.logger.finalize_round()
             i += 1
 
     def plot_results(self):
@@ -172,8 +188,8 @@ alpha = 0.2
 budget = 1500
 
 # Run the LinUCB algorithm
-omega_ucb = OmegaUCB(n_actions=n_a, n_features=k, contexts=contexts, true_theta=true_theta, cost=cost, alpha=alpha,
-                budget=budget)
-omega_ucb.run()
+#omega_ucb = OmegaUCB(n_actions=n_a, n_features=k, contexts=contexts, true_theta=true_theta, cost=cost, alpha=alpha,
+               # budget=budget)
+#omega_ucb.run()
 #omega_ucb.plot_results()
-print(omega_ucb.theta_hat)
+#print(omega_ucb.theta_hat)
