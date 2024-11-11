@@ -6,7 +6,7 @@ np.random.seed(42)
 
 
 class ThompsonSamplingContextualBandit:
-    def __init__(self, d, v, n_arms, n_rounds, contexts, true_weights, cost, budget):
+    def __init__(self, d, v, n_arms, contexts, true_weights, cost, budget, logger, repetition, seed):
         """
         d: Dimension der Kontextvektoren
         v: Varianzparameter für die Normalverteilung
@@ -17,20 +17,24 @@ class ThompsonSamplingContextualBandit:
         cost: Kosten pro Arm
         budget: Gesamtbudget
         """
+        np.random.seed(42)
+        self.logger = logger
+        self.repetition = repetition
         self.n_features = d
         self.variance = v
         self.n_arms = n_arms
-        self.n_rounds = n_rounds
         self.contexts = contexts
         self.true_weights = true_weights
         self.cost = np.array(cost)
         self.budget = budget
+        self.og_budget = budget
         self.max_cost = np.max(self.cost)
         self.arm_counts = np.zeros(self.n_arms)
         self.gamma = 0.00000001
         self.cum = np.zeros(self.n_arms)
 
         self.empirical_cost_means = np.random.rand(self.n_arms)
+        self.summed_regret = 0
 
         # Initialisiere die Parameter für jeden Arm
         self.B = np.array([np.identity(self.n_features) for _ in range(self.n_arms)])
@@ -100,13 +104,23 @@ class ThompsonSamplingContextualBandit:
             actual_reward = np.dot(self.true_weights[chosen_arm], context)
 
             self.update_beliefs(actual_reward, chosen_arm, context)
-            self.observed_reward_history.append(actual_reward / self.cost[chosen_arm])
+            observed_reward = actual_reward / self.cost[chosen_arm]
+            self.observed_reward_history.append(observed_reward)
             x = self.calculate_optimal_reward(context)
             self.optimal_reward.append(x[0])
 
-            if(chosen_arm != x[1]): print("false")
+            self.summed_regret += x[0] - observed_reward
 
+            self.logger.track_rep(self.repetition)
+            self.logger.track_approach(1)
+            self.logger.track_round(i)
+            self.logger.track_regret(self.summed_regret)
+            self.logger.track_normalized_budget((self.og_budget - self.budget)/ self.og_budget)
+            self.logger.track_spent_budget(self.og_budget - self.budget)
+            self.logger.finalize_round()
             i += 1
+
+        print('muHat TS', self.mu_hat)
 
 
 # Parameter festlegen
@@ -120,9 +134,8 @@ contexts = np.random.rand(num_rounds, num_features)
 variance = 0.2
 
 # Algorithmus ausführen
-bandit = ThompsonSamplingContextualBandit(num_features, variance, num_arms, num_rounds, contexts, true_weights,
-                                          true_cost, budget)
-bandit.run()
+#bandit = ThompsonSamplingContextualBandit(num_features, variance, num_arms, contexts, true_weights,true_cost, budget)
+#bandit.run()
 
 #plot regret
-regret = np.array(bandit.optimal_reward) - np.array(bandit.observed_reward_history)
+#regret = np.array(bandit.optimal_reward) - np.array(bandit.observed_reward_history)

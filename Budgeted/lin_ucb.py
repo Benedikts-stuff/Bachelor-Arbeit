@@ -50,15 +50,27 @@ class LinUCB:
         upper_ci =(1 + np.sqrt(np.log(2 * (count + 1)) / 2)) * np.sqrt(ta)
 
         # Adjust for cost and return estimated reward per cost ratio
-        return (mean_estimate + upper_ci) / (self.empirical_cost_means[action] + self.gamma)
+        return (mean_estimate + upper_ci)
+
+    def calculate_lower_confidence_bound(self, action, count):
+        """
+        Calculate the upper confidence bound for a given action and context.
+        """
+        mean = self.empirical_cost_means[action]
+        lower_cb =self.gamma * np.sqrt(np.log(count + 1)/ (self.arm_counts[action] + 1))
+
+        # Adjust for cost and return estimated reward per cost ratio
+        return (mean + lower_cb)
 
     def select_arm(self, context, count):
         """
         Select the arm with the highest upper confidence bound, adjusted for cost.
         """
         p = np.array([self.calculate_upper_confidence_bound(a, context, count) for a in range(self.n_actions)])
+        l = np.array([self.calculate_lower_confidence_bound(a, count) for a in range(self.n_actions)])
         p += np.random.random(len(p)) * 0.000001  # Avoid bias with tie-breaking by adding small noise
-        return np.argmax(p)
+        res = p/l
+        return np.argmax(res)
 
     def update_parameters(self, chosen_arm, context, actual_reward):
         """
@@ -106,7 +118,7 @@ class LinUCB:
 
         # Plot cumulative reward
         plt.subplot(1, 2, 1)
-        plt.plot(np.cumsum(self.optimal_reward) - np.cumsum(self.rewards), label='Cumulative regret')
+        plt.plot(np.cumsum(self.optimal_reward) - np.cumsum(self.rewards)[:len(self.optimal_reward)], label='Cumulative regret')
         plt.xlabel('Rounds')
         plt.ylabel('Cumulative Reward')
         plt.legend()
@@ -137,3 +149,4 @@ budget = 1000
 linucb = LinUCB(n_actions=n_a, n_features=k, contexts=contexts, true_theta=true_theta, cost=cost, alpha=alpha,
                 budget=budget)
 linucb.run()
+#linucb.plot_results()
