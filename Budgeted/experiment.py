@@ -72,54 +72,12 @@ all_ids = [
 ]
 
 algorithms= [
-BGREEDY,
-LINUCB,
-OMEGAUCB,
-THOMPSON
+    BGREEDY,
+    LINUCB,
+    OMEGAUCB,
+    THOMPSON
 ]
 
-
-class Paralell_Experiment:
-    def __init__(self, functions, arguments, jobs):
-       self.functions = functions
-       self.arguments = arguments
-       self.njobs = jobs
-
-    # Funktion, die einen bestimmten Zeitraum wartet und dann den Wert zurückgibt
-    def _wait(i):
-        sleep(i)  # Warte für 'i' Sekunden
-        return i  # Gib den Wert 'i' zurück
-
-    # Funktion zur asynchronen Ausführung einer beliebigen Funktion in mehreren Prozessen
-    def run_async(self, function, args_list, njobs, sleep_time_s=0.01):
-        # Erstelle einen Pool von 'njobs' parallelen Prozessen
-        pool = Pool(njobs)
-
-        # Starte asynchrone Ausführung der Funktion mit verschiedenen Argumenten
-        # `pool.apply_async` führt `function` asynchron mit den jeweiligen Argumenten aus
-        results = [pool.apply_async(function, args=args) for args in args_list]
-
-        # Überprüfe wiederholt, ob alle asynchronen Aufgaben abgeschlossen sind
-        while not all(future.ready() for future in results):
-            sleep(sleep_time_s)  # Warte eine kurze Zeit bevor erneut geprüft wird
-
-        # Hole die Ergebnisse aller asynchronen Aufgaben ab, nachdem sie abgeschlossen sind
-        results = [result.get() for result in results]
-
-        # Schließe den Pool, sodass keine weiteren Aufgaben hinzugefügt werden können
-        pool.close()
-
-        return results  # Gib die Ergebnisse der asynchronen Aufgaben zurück
-
-    def execute_parallel(self):
-        # Hauptprogramm
-        if __name__ == '__main__':
-            #njobs = 3  # Anzahl der parallelen Prozesse, die genutzt werden sollen
-            # Liste von Argumenten (hier: Wartezeiten), die an `_wait` übergeben werden
-            delay = [[i] for i in range(4)]
-            # Führe die Funktion `_wait` asynchron mit den Argumenten aus und speichere das Ergebnis
-            result = self.run_async(self._wait, delay, self.njobs)
-            print(result)  # Ausgabe: [0, 1, 2] (da `_wait(i)` jeweils den Wert `i` zurückgibt)
 
 
 class BanditLogger:
@@ -193,7 +151,11 @@ class BanditLogger:
         self._data = []
 
 
+
+
+
 class Runner:
+
     def __init__(self, n_rounds):
         self.iterations = n_rounds
         self.num_arms = 3
@@ -219,7 +181,7 @@ class Runner:
                 for i in tqdm(range(self.iterations)):
                     np.random.seed(i)
                     true_weights = np.random.rand(self.num_arms, self.num_features)
-                    true_cost = np.random.uniform(0.1, 1, self.num_arms)
+                    true_cost = np.random.uniform(0.01, 1, self.num_arms)
 
                     # Jede Bandit-Instanz in eine separate Funktion packen und als Future starten
                     futures.append(executor.submit(self.run_bandit, 'EpsilonGreedy', true_weights, true_cost, i))
