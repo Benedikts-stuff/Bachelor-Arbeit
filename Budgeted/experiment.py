@@ -4,7 +4,9 @@ import pandas as pd
 import pylab as pl
 import seaborn as sns
 from matplotlib import pyplot as plt
-
+from concurrent.futures import ProcessPoolExecutor,as_completed
+import multiprocessing
+multiprocessing.set_start_method("spawn", force=True)
 from tqdm import tqdm
 import time  # Beispielweise zum Simulieren von Berechnungszeit
 
@@ -76,7 +78,7 @@ THOMPSON
 ]
 
 
-class Experiment:
+class Paralell_Experiment:
     def __init__(self, functions, arguments, jobs):
        self.functions = functions
        self.arguments = arguments
@@ -88,7 +90,7 @@ class Experiment:
         return i  # Gib den Wert 'i' zurück
 
     # Funktion zur asynchronen Ausführung einer beliebigen Funktion in mehreren Prozessen
-    def run_async(function, args_list, njobs, sleep_time_s=0.01):
+    def run_async(self, function, args_list, njobs, sleep_time_s=0.01):
         # Erstelle einen Pool von 'njobs' parallelen Prozessen
         pool = Pool(njobs)
 
@@ -198,139 +200,98 @@ class Runner:
         self.num_rounds = 100000
         self.context = np.random.rand(self.num_rounds, self.num_features)
         self.budget = 4000
-        self.df = pd.DataFrame(all_ids)
         self.normalized_budget_points = np.linspace(0, 1, 100)
-        self.all_data = []
-        self.logger =BanditLogger()
-        self.df1 = pd.DataFrame(all_ids)
-        self.df2 = pd.DataFrame(all_ids)
         self.epsilon = np.array([0.05, 0.025, 0.1, 0.15, 0.125, 0.075, 0.09, 0.175])
         self.alpha = np.array([0.1, 0.2, 0.3])
 
     def run_experiment(self):
-        all_data1 = []  # Liste für die Daten von EpsilonGreedy
-        all_data2 = []  # Liste für die Daten von Thompson Sampling
-        all_data3 = []  # Liste für die Daten von LinUCB
-        all_data4 = []  # Liste für die Daten von OmegaUCB
+        all_data = {
+            'EpsilonGreedy': [],
+            'ThompsonSampling': [],
+            'LinUCB': [],
+            'OmegaUCB': []
+        }
 
-        for i in tqdm(range(self.iterations)):
-            np.random.seed(i)  # Verwende den Iterationsindex, um die Zufälligkeit zu variieren
+        with ProcessPoolExecutor(max_workers=4) as executor:
+            futures = []
+            if __name__ == '__main__':
+                for i in tqdm(range(self.iterations)):
+                    np.random.seed(i)
+                    true_weights = np.random.rand(self.num_arms, self.num_features)
+                    true_cost = np.random.uniform(0.1, 1, self.num_arms)
 
-            true_weights = np.random.rand(self.num_arms, self.num_features)
-            true_cost = np.random.uniform(0.1, 1, self.num_arms)
+                    # Jede Bandit-Instanz in eine separate Funktion packen und als Future starten
+                    futures.append(executor.submit(self.run_bandit, 'EpsilonGreedy', true_weights, true_cost, i))
+                    futures.append(executor.submit(self.run_bandit, 'ThompsonSampling', true_weights, true_cost, i))
+                    futures.append(executor.submit(self.run_bandit, 'LinUCB', true_weights, true_cost, i))
+                    futures.append(executor.submit(self.run_bandit, 'OmegaUCB', true_weights, true_cost, i))
 
-            # Bandits initialisieren und Experimente durchführen
-            #Epsilon Greedy
-            logger1 = BanditLogger()
-            self.greedy_bandit = EpsilonGreedyContextualBandit(
-                self.num_features, np.random.choice(self.epsilon), self.num_arms, self.context, true_weights, true_cost, self.budget, logger1, i, i
-            )
-            self.greedy_bandit.run()
-            df1 = logger1.get_dataframe()
-            all_data1.append(df1)
+            # Ergebnisse sammeln, sobald verfügbar
+            for future in futures:
+                bandit_type, result = future.result()
+                all_data[bandit_type].append(result)
 
-            #Thompson sampling
-            logger2 = BanditLogger()
-            self.thompson_bandit = ThompsonSamplingContextualBandit(
-                self.num_features, 1, self.num_arms, self.context, true_weights, true_cost, self.budget, logger2, i, i
-            )
-            self.thompson_bandit.run()
+        # Interpolierte Plotdaten berechnen
+        if __name__ == '__main__':
+            plot_data = {name: self.interp_plot(data) for name, data in all_data.items()}
 
-            df2 = logger2.get_dataframe()
-            all_data2.append(df2)
+            self.plot_budget_normalised_regret(plot_data)
 
-            #LinUCB
-            logger3 = BanditLogger()
-            self.lin_ucb= LinUCB(
-                self.num_arms, self.num_features, self.context, true_weights, true_cost, np.random.choice(self.alpha), self.budget, logger3, i, i
-            )
-            self.lin_ucb.run()
+    def run_bandit(self, bandit_type, true_weights, true_cost, seed):
+        # Jede Bandit-Implementierung wird in einer separaten Methode ausgeführt
+        np.random.seed(seed)  # Setze den Seed für Konsistenz
+        bandit = None
+        logger = BanditLogger()
 
-            df3 = logger3.get_dataframe()
-            all_data3.append(df3)
+        if bandit_type == 'EpsilonGreedy':
+            bandit = EpsilonGreedyContextualBandit(self.num_features, np.random.choice(self.epsilon),
+                                                   self.num_arms, self.context, true_weights, true_cost,
+                                                   self.budget, logger, seed, seed)
+        elif bandit_type == 'ThompsonSampling':
+            bandit = ThompsonSamplingContextualBandit(self.num_features, 1, self.num_arms, self.context,
+                                                     true_weights, true_cost, self.budget, logger, seed, seed)
+        elif bandit_type == 'LinUCB':
+            bandit = LinUCB(self.num_arms, self.num_features, self.context, true_weights, true_cost,
+                            np.random.choice(self.alpha), self.budget, logger, seed, seed)
+        elif bandit_type == 'OmegaUCB':
+            bandit = OmegaUCB(self.num_arms, self.num_features, self.context, true_weights, true_cost,
+                              np.random.choice(self.alpha), self.budget, logger, seed, seed)
 
-
-            #OmegaLinUCB
-            logger4 = BanditLogger()
-            self.omega_lin_ucb= OmegaUCB(
-                self.num_arms, self.num_features, self.context, true_weights, true_cost, np.random.choice(self.alpha), self.budget, logger4, i, i
-            )
-            self.omega_lin_ucb.run()
-
-            df4 = logger4.get_dataframe()
-            all_data4.append(df4)
-
-        # Alle Daten nach den Iterationen zusammenführen
-        #self.df1 = pd.concat(all_data1, ignore_index=True)
-        #self.df2 = pd.concat(all_data2, ignore_index=True)
-        plot_data = np.array([self.interp_plot(all_data1), self.interp_plot(all_data2), self.interp_plot(all_data3), self.interp_plot(all_data4)])
-        self.plot_budget_normalised_regret(plot_data)
-
-    def plot_budget_normalised_regret(self, plot_data):
-        # Angenommen, df ist dein DataFrame
-        #eg_data = self.df[self.df[APPROACH] == 0]
-        #ts_data = self.df[self.df[APPROACH] == 1]
-
-        pl.ylim(0,500)
-        i = 0
-        for line in plot_data:
-            plt.plot(line[0], line[1], '--', color='red', label=algorithms[i])
-            i +=1
-        plt.xlabel(NORMALIZED_SPENT_BUDGET)
-        plt.ylabel(REGRET)
-        plt.legend()
-        plt.show()
-
-        #sns.lineplot(x=NORMALIZED_SPENT_BUDGET, y=REGRET, data=self.df1, hue=REP)
-
-        # Plot konfigurieren
-        #plt.xlabel('Normalized Budget')
-        #plt.ylabel('Cumulative Regret')
-        #plt.ylim(0,3000)
-        #plt.title('Regret Plot e-greedy')
-
-        #plt.show()
-
-        #sns.lineplot(x=NORMALIZED_SPENT_BUDGET, y=REGRET, data=self.df2, hue=REP)
-
-        # Plot konfigurieren
-        #plt.xlabel('Normalized Budget')
-        #plt.ylabel('Cumulative Regret')
-        #plt.title('Regret Plot ts')
-
-        # Zeige den Plot an
-        #plt.show()
+        bandit.run()
+        return bandit_type, logger.get_dataframe()
 
     def interp_plot(self, dfs, x_col=NORMALIZED_SPENT_BUDGET, y_col=REGRET):
-        # Liste der Achsen-Daten erstellen
         axis_list = []
         for df in dfs:
             data = df[[x_col, y_col]].sort_values(by=x_col).drop_duplicates(x_col).to_numpy()
             axis_list.append(data)
 
-        # Minimum und Maximum für jeden Datensatz finden
-        min_max_xs = [(min(axis[:, 0]), max(axis[:, 0])) for axis in axis_list]
-        new_axis_xs = [np.linspace(0, 1, 100) for min_x, max_x in min_max_xs]
+        new_axis_xs = np.linspace(0, 1, 100)
+        new_axis_ys = [np.interp(new_axis_xs, axis[:, 0], axis[:, 1]) for axis in axis_list]
 
-        # Interpolierte Y-Werte berechnen
-        new_axis_ys = [np.interp(new_x_axis, axis[:, 0], axis[:, 1]) for axis, new_x_axis in
-                       zip(axis_list, new_axis_xs)]
+        midy = np.mean(new_axis_ys, axis=0)
+        return pd.DataFrame({x_col: new_axis_xs, y_col: midy})
 
-        # Mittelwert der X- und Y-Werte berechnen
-        midx = [np.mean([new_axis_xs[axis_idx][i] for axis_idx in range(len(axis_list))]) for i in range(100)]
-        midy = [np.mean([new_axis_ys[axis_idx][i] for axis_idx in range(len(axis_list))]) for i in range(100)]
+    def plot_budget_normalised_regret(self, plot_data):
+        plt.figure(figsize=(10, 6))
+        styles = {
+            'EpsilonGreedy': ('blue', '-'),
+            'ThompsonSampling': ('green', '--'),
+            'LinUCB': ('orange', '-.'),
+            'OmegaUCB': ('red', ':')
+        }
 
-        # Plot für jeden Durchlauf und den Durchschnitt erstellen
-        #for axis in axis_list:
-           # plt.plot(axis[:, 0], axis[:, 1], color='black', alpha=0.3)
-        return np.array([midx, midy])
-        #pl.ylim(0,500)
-        #plt.plot(midx, midy, '--', color='red', label='Interpolierter Mittelwert')
-        #plt.xlabel(x_col)
-        #plt.ylabel(y_col)
-        #plt.legend()
-        #plt.show()
+        for name, df in plot_data.items():
+            color, style = styles[name]
+            sns.lineplot(x=NORMALIZED_SPENT_BUDGET, y=REGRET, data=df, label=name, color=color, linestyle=style)
 
-runner = Runner(4)
+        plt.xlabel("Normalized Spent Budget")
+        plt.ylabel("Cumulative Regret")
+        plt.ylim(0, 500)
+        plt.legend()
+        plt.title("Regret Comparison of Different Bandit Approaches")
+        plt.show()
+
+# Starte das Experiment
+runner = Runner(30)
 runner.run_experiment()
-
