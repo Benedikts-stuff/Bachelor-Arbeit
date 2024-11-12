@@ -18,6 +18,7 @@ from w_ucb import OmegaUCB
 
 from multiprocessing import Pool
 from time import sleep
+import time
 
 REP = "rep"
 ROUND = r"$t$"
@@ -294,4 +295,8 @@ class Runner:
 
 # Starte das Experiment
 runner = Runner(30)
+start_time = time.time()  # Startzeitpunkt
 runner.run_experiment()
+end_time = time.time()  # Endzeitpunkt
+execution_time = end_time - start_time  # Zeitdifferenz in Sekunden
+print(f"Die Methode dauerte {execution_time:.4f} Sekunden.")
