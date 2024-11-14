@@ -35,6 +35,8 @@ class ThompsonSamplingContextualBandit:
 
         self.empirical_cost_means = np.random.rand(self.n_arms)
         self.summed_regret = 0
+        self.alpha =np.ones(self.n_arms)
+        self.beta = np.ones(self.n_arms)
 
         # Initialisiere die Parameter für jeden Arm
         self.B = np.array([np.identity(self.n_features) for _ in range(self.n_arms)])
@@ -68,8 +70,9 @@ class ThompsonSamplingContextualBandit:
         """
         Wählt den Arm mit dem höchsten erwarteten Belohnungs-Kosten-Verhältnis.
         """
+        sampled_cost = np.array([np.random.beta(self.alpha[i], self.beta[i]) for i in range(self.n_arms)])
         expected_rewards = np.array([np.dot(sampled_mu[arm], context) for arm in range(self.n_arms)])
-        return np.argmax(expected_rewards / (self.empirical_cost_means + self.gamma))
+        return np.argmax(expected_rewards / (sampled_cost + self.gamma))
 
     def calculate_optimal_reward(self, context):
         """
@@ -87,9 +90,11 @@ class ThompsonSamplingContextualBandit:
         self.mu_hat[chosen_arm] = np.linalg.inv(self.B[chosen_arm]).dot(self.f[chosen_arm])
         self.budget -= self.cost[chosen_arm]
 
-        self.cum[chosen_arm] += np.random.binomial(1, self.cost[chosen_arm])
-        self.empirical_cost_means[chosen_arm] = self.cum[chosen_arm] / (self.arm_counts[chosen_arm] + 1)
-
+        cost_t = np.random.binomial(1, self.cost[chosen_arm])
+        #self.empirical_cost_means[chosen_arm] = self.cum[chosen_arm] / (self.arm_counts[chosen_arm] + 1)
+        #update beta dist. params
+        self.alpha[chosen_arm] += cost_t
+        self.beta[chosen_arm] += 1 - cost_t
         self.arm_counts[chosen_arm] += 1
 
     def run(self):

@@ -4,21 +4,17 @@ import pandas as pd
 import pylab as pl
 import seaborn as sns
 from matplotlib import pyplot as plt
-from concurrent.futures import ProcessPoolExecutor,ThreadPoolExecutor, as_completed
+from concurrent.futures import ProcessPoolExecutor,as_completed
 import multiprocessing
-import math
 multiprocessing.set_start_method("spawn", force=True)
 from tqdm import tqdm
 import time  # Beispielweise zum Simulieren von Berechnungszeit
 
 from Budgeted.c_b_thompson import ThompsonSamplingContextualBandit
-#from c_b_thompson import ThompsonSamplingContextualBandit
 from lin_ucb import LinUCB
 from olr_e_greedy import EpsilonGreedyContextualBandit
 from w_ucb import OmegaUCB
 
-from multiprocessing import Pool
-from time import sleep
 import time
 
 REP = "rep"
@@ -198,8 +194,8 @@ class Runner:
         # Interpolierte Plotdaten berechnen
         if __name__ == '__main__':
             plot_data = {name: self.interp_plot(data) for name, data in all_data.items()}
-            self.plot_budget_normalised_regret(plot_data)
 
+            self.plot_budget_normalised_regret(plot_data)
 
     def run_bandit(self, bandit_type, true_weights, true_cost, seed):
         # Jede Bandit-Implementierung wird in einer separaten Methode ausgeführt
