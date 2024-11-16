@@ -66,7 +66,7 @@ class OmegaUCB:
             A = arm_count + z**2 * eta
             B = 2*arm_count*mu_r + z**2 * eta # eig noch * (M-m) aber das ist hier gleich 1
             C = arm_count* mu_r**2
-            x = np.sqrt((B**2 / (4* A**2)) - (C/A), -1,None)
+            x = np.sqrt((B**2 / (4* A**2)) - (C/A))
             omega_r = (B/(2*A)) + x
             upper.append(omega_r)
 

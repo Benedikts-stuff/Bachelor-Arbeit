@@ -188,7 +188,7 @@ class Runner:
                         if row_sum > 1:
                             true_weights[i] /= row_sum
 
-                    true_cost = np.random.uniform(0.1, 1, self.num_arms)
+                    true_cost = np.random.uniform(0.45, 0.55, self.num_arms)
                     #true_cost = np.clip(np.random.beta(0.5, 0.5, self.num_arms), 0.01, 1)
                     # Jede Bandit-Instanz in eine separate Funktion packen und als Future starten
                     #futures.append(executor.submit(self.run_bandit, 'EpsilonGreedy', true_weights, true_cost, i))
