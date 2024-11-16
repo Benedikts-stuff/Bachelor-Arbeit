@@ -182,6 +182,7 @@ class Runner:
                 for i in tqdm(range(self.iterations)):
                     np.random.seed(i)
                     true_weights = np.random.rand(self.num_arms, self.num_features)
+                    #rewards sollen in [0,1] sein daher summe gewichte = 1 wenn features auch in [0,1] sind
                     for i in range(self.num_arms):
                         row_sum = np.sum(true_weights[i])
                         if row_sum > 1:

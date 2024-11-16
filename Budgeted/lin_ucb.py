@@ -19,7 +19,7 @@ class LinUCB:
         np.random.seed(seed)
         self.n_actions = n_actions
         self.n_features = n_features
-        self.contexts = contexts - 0.5
+        self.contexts = contexts -0.5
         self.true_theta = true_theta
         self.cost = cost
         self.budget = budget

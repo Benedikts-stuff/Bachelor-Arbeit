@@ -19,7 +19,7 @@ class OmegaUCB:
         np.random.seed(seed)
         self.n_actions = n_actions
         self.n_features = n_features
-        self.contexts = contexts - 0.5
+        self.contexts = contexts  #- 0.5
         self.true_theta = true_theta
         self.cost = cost
         self.budget = budget
@@ -60,13 +60,14 @@ class OmegaUCB:
             arm_count = self.arm_counts[i]
             z = np.sqrt(2* self.p* np.log(round + 2))
             if mu_r != 0 and mu_r != 1:
-                eta = variance / ((1 - mu_r)*mu_r)
+                eta = 1 #
 
+           # print('LOOOL', mu_r )
             A = arm_count + z**2 * eta
             B = 2*arm_count*mu_r + z**2 * eta # eig noch * (M-m) aber das ist hier gleich 1
             C = arm_count* mu_r**2
-
-            omega_r = (B/(2*A)) + np.sqrt(np.clip((B**2 / (4* A**2)) - (C/A), 0,None))
+            x = np.sqrt((B**2 / (4* A**2)) - (C/A), -1,None)
+            omega_r = (B/(2*A)) + x
             upper.append(omega_r)
 
         # Adjust for cost and return estimated reward per cost ratio
