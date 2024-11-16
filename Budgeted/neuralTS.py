@@ -132,7 +132,7 @@ true_weights = [torch.rand(d) for i in range(num_arms)]
 contexts = [torch.rand(d) for _ in range(T)]
 
 # Generate rewards based on a sinusoidal function of the dot product
-rewards = [[torch.dot(true_weights[j], contexts[i]) for j in range(num_arms)] for i in range(len(contexts))] # reward = exp(f(x)) wo bei f linear in context x
+rewards = [[torch.exp(torch.dot(true_weights[j], contexts[i])) for j in range(num_arms)] for i in range(len(contexts))] # reward = exp(f(x)) wo bei f linear in context x
 
 # Run Neural Thompson Sampling
 reward = neural_thompson_sampling(T, d, m, L, lambda_, nu, eta, J, contexts, rewards, num_arms)

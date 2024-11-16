@@ -4,7 +4,7 @@ from matplotlib import pyplot as plt
 
 
 class OmegaUCB:
-    def __init__(self, n_actions, n_features, contexts, true_theta, cost, alpha, budget, logger, repetition, seed):
+    def __init__(self, n_actions, n_features, contexts, true_theta, cost, budget, logger, repetition, seed, p):
         """
         Initialize the LinUCB instance with parameters.
 
@@ -22,7 +22,6 @@ class OmegaUCB:
         self.contexts = contexts - 0.5
         self.true_theta = true_theta
         self.cost = cost
-        self.alpha = alpha
         self.budget = budget
         self.og_budget = budget
         self.cum = np.zeros(self.n_actions)
@@ -31,7 +30,7 @@ class OmegaUCB:
 
         self.empirical_cost_means = np.random.rand(self.n_actions)
         self.z = 1
-        self.p = 0.95
+        self.p = p #0.95
         self.repetition = repetition
         self.logger = logger
         self.summed_regret = 0
@@ -67,7 +66,7 @@ class OmegaUCB:
             B = 2*arm_count*mu_r + z**2 * eta # eig noch * (M-m) aber das ist hier gleich 1
             C = arm_count* mu_r**2
 
-            omega_r = B/(2*A) + np.sqrt((B**2 / (4* A**2)) - C/A)
+            omega_r = (B/(2*A)) + np.sqrt(np.clip((B**2 / (4* A**2)) - (C/A), 0,None))
             upper.append(omega_r)
 
         # Adjust for cost and return estimated reward per cost ratio
@@ -80,7 +79,6 @@ class OmegaUCB:
         lower = []
         for i in range(self.n_actions):
             mu_c = self.empirical_cost_means[i]
-            analytic_variance = mu_c * (1 - mu_c)
             arm_count = self.arm_counts[i]
             eta = 1
             z = np.sqrt(2 * self.p * np.log(round + 2))

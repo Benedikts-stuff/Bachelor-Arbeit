@@ -37,7 +37,7 @@ class EpsilonGreedyContextualBandit:
         self.summed_regret = 0
 
     def select_arm(self, context):
-        if np.random.rand() < self.epsilon:
+        if np.random.rand() < min(1, self.epsilon * self.n_arms/(self.i +1)):
             return np.random.choice(self.n_arms)  # Exploration
         else:
             expected_rewards = np.array([np.dot(self.mu_hat[i], context) for i in range(self.n_arms)])
@@ -56,17 +56,17 @@ class EpsilonGreedyContextualBandit:
         self.budget = self.budget - self.costs[chosen_arm]
 
     def run(self):
-        i = 0
+        self.i = 0
         count = 0
         while self.budget > self.max_cost:
-            context = self.contexts[i]
+            context = self.contexts[self.i]
             chosen_arm = self.select_arm(context)
-            self.update(self.actual_reward_history[i, chosen_arm], chosen_arm, context)
-            observed_reward = self.actual_reward_history[i, chosen_arm] / self.costs[chosen_arm]
+            self.update(self.actual_reward_history[self.i, chosen_arm], chosen_arm, context)
+            observed_reward = self.actual_reward_history[self.i, chosen_arm] / self.costs[chosen_arm]
             self.observed_reward_history.append(observed_reward)
 
-            optimal = np.max(self.actual_reward_history[i] / self.costs)
-            opt_arm = np.argmax(self.actual_reward_history[i] / self.costs)
+            optimal = np.max(self.actual_reward_history[self.i] / self.costs)
+            opt_arm = np.argmax(self.actual_reward_history[self.i] / self.costs)
             self.optimal_reward.append(optimal - observed_reward)
 
             if opt_arm != chosen_arm:
@@ -75,12 +75,12 @@ class EpsilonGreedyContextualBandit:
 
             self.logger.track_rep(self.repetition)
             self.logger.track_approach(0)
-            self.logger.track_round(i)
+            self.logger.track_round(self.i)
             self.logger.track_regret(self.summed_regret)
             self.logger.track_normalized_budget((self.og_budget - self.budget)/ self.og_budget)
             self.logger.track_spent_budget(self.og_budget - self.budget)
             self.logger.finalize_round()
-            i += 1
+            self.i += 1
 
 
 

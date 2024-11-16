@@ -6,6 +6,9 @@ import seaborn as sns
 from matplotlib import pyplot as plt
 from concurrent.futures import ProcessPoolExecutor,as_completed
 import multiprocessing
+
+from Budgeted.c_b_thompson_empirical_cost import ThompsonSamplingContextualBanditEmpiric
+
 multiprocessing.set_start_method("spawn", force=True)
 from tqdm import tqdm
 import time  # Beispielweise zum Simulieren von Berechnungszeit
@@ -157,17 +160,18 @@ class Runner:
         self.iterations = n_rounds
         self.num_arms = 3
         self.num_features = 3
-        self.num_rounds = 100000
+        self.num_rounds = 10000000
         self.context = np.random.rand(self.num_rounds, self.num_features)
         self.budget = 4000
         self.normalized_budget_points = np.linspace(0, 1, 100)
-        self.epsilon = np.array([0.05, 0.025, 0.1, 0.15, 0.125, 0.075, 0.09, 0.175])
-        self.alpha = np.array([0.1, 0.2, 0.3])
+        self.epsilon = np.array([0.05, 0.025, 0.1, 0.15, 0.125, 0.075, 0.09, 0.175, 0.2])
+       #self.delta = np.array([0.1,0.15, 0.2, 0,25, 0.3])
+        self.p = np.array([0.25, 0.3, 0.4, 0.6, 0.7, 0.8, 0.9, 0.95, 1.0])
 
     def run_experiment(self):
         all_data = {
-            'EpsilonGreedy': [],
-            'ThompsonSampling': [],
+            #'EpsilonGreedy': [],
+            #'ThompsonSampling': [],
             'LinUCB': [],
             'OmegaUCB': []
         }
@@ -178,11 +182,16 @@ class Runner:
                 for i in tqdm(range(self.iterations)):
                     np.random.seed(i)
                     true_weights = np.random.rand(self.num_arms, self.num_features)
-                    true_cost = np.random.uniform(0.01, 1, self.num_arms)
+                    for i in range(self.num_arms):
+                        row_sum = np.sum(true_weights[i])
+                        if row_sum > 1:
+                            true_weights[i] /= row_sum
 
+                    true_cost = np.random.uniform(0.1, 1, self.num_arms)
+                    #true_cost = np.clip(np.random.beta(0.5, 0.5, self.num_arms), 0.01, 1)
                     # Jede Bandit-Instanz in eine separate Funktion packen und als Future starten
-                    futures.append(executor.submit(self.run_bandit, 'EpsilonGreedy', true_weights, true_cost, i))
-                    futures.append(executor.submit(self.run_bandit, 'ThompsonSampling', true_weights, true_cost, i))
+                    #futures.append(executor.submit(self.run_bandit, 'EpsilonGreedy', true_weights, true_cost, i))
+                    #futures.append(executor.submit(self.run_bandit, 'ThompsonSampling', true_weights, true_cost, i))
                     futures.append(executor.submit(self.run_bandit, 'LinUCB', true_weights, true_cost, i))
                     futures.append(executor.submit(self.run_bandit, 'OmegaUCB', true_weights, true_cost, i))
 
@@ -198,7 +207,6 @@ class Runner:
             self.plot_budget_normalised_regret(plot_data)
 
     def run_bandit(self, bandit_type, true_weights, true_cost, seed):
-        # Jede Bandit-Implementierung wird in einer separaten Methode ausgeführt
         np.random.seed(seed)  # Setze den Seed für Konsistenz
         bandit = None
         logger = BanditLogger()
@@ -208,14 +216,14 @@ class Runner:
                                                    self.num_arms, self.context, true_weights, true_cost,
                                                    self.budget, logger, seed, seed)
         elif bandit_type == 'ThompsonSampling':
-            bandit = ThompsonSamplingContextualBandit(self.num_features, 1, self.num_arms, self.context,
+            bandit = ThompsonSamplingContextualBanditEmpiric(self.num_features, 1, self.num_arms, self.context,
                                                      true_weights, true_cost, self.budget, logger, seed, seed)
         elif bandit_type == 'LinUCB':
-            bandit = LinUCB(self.num_arms, self.num_features, self.context, true_weights, true_cost,
-                            np.random.choice(self.alpha), self.budget, logger, seed, seed)
+            bandit = LinUCB(self.num_arms, self.num_features, self.context, true_weights, true_cost, self.budget,
+                            logger, seed, seed)
         elif bandit_type == 'OmegaUCB':
-            bandit = OmegaUCB(self.num_arms, self.num_features, self.context, true_weights, true_cost,
-                              np.random.choice(self.alpha), self.budget, logger, seed, seed)
+            bandit = OmegaUCB(self.num_arms, self.num_features, self.context, true_weights, true_cost, self.budget,
+                              logger, seed, seed, np.random.choice(self.p))
 
         bandit.run()
         return bandit_type, logger.get_dataframe()

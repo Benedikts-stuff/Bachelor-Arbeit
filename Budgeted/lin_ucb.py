@@ -4,7 +4,7 @@ from matplotlib import pyplot as plt
 
 
 class LinUCB:
-    def __init__(self, n_actions, n_features, contexts, true_theta, cost, alpha, budget, logger, repetion, seed):
+    def __init__(self, n_actions, n_features, contexts, true_theta, cost, budget, logger, repetition, seed):
         """
         Initialize the LinUCB instance with parameters.
 
@@ -17,14 +17,11 @@ class LinUCB:
         budget: Total budget for playing arms.
         """
         np.random.seed(seed)
-        self.logger = logger
-        self.repetition = repetion
         self.n_actions = n_actions
         self.n_features = n_features
         self.contexts = contexts - 0.5
         self.true_theta = true_theta
         self.cost = cost
-        self.alpha = alpha
         self.budget = budget
         self.og_budget = budget
         self.cum = np.zeros(self.n_actions)
@@ -32,7 +29,10 @@ class LinUCB:
         self.gamma = 0.00000001
 
         self.empirical_cost_means = np.random.rand(self.n_actions)
+        self.repetition = repetition
+        self.logger = logger
         self.summed_regret = 0
+
 
         # Initialize variables
         self.A = np.array([np.identity(n_features) for _ in range(n_actions)])  # Covariance matrices for each arm
@@ -43,38 +43,44 @@ class LinUCB:
         self.optimal_reward = []
         self.norms = np.zeros(len(contexts))
 
-    def calculate_upper_confidence_bound(self, action, context, count):
+    def calculate_upper_confidence_bound(self, context, round):
         """
         Calculate the upper confidence bound for a given action and context.
         """
-        A_inv = np.linalg.inv(self.A[action])
-        theta_hat = A_inv.dot(self.b[action])
-        mean_estimate = theta_hat.dot(context)
-        ta = context.dot(A_inv).dot(context)
-        upper_ci =(1 + np.sqrt(np.log(2 * (count + 1)) / 2)) * np.sqrt(ta)
+        upper =[]
+        for i in range(self.n_actions):
+            A_inv = np.linalg.inv(self.A[i])
+            theta_hat = A_inv.dot(self.b[i])
+            ta = context.dot(A_inv).dot(context)  # how informative is this?
+            a_upper_ci = (1 + np.sqrt(np.log(2 * (i + 1)) / 2)) * np.sqrt(ta)  # upper part of variance interval
+
+            a_mean = theta_hat.dot(context)  # current estimate of mean
+            p = a_mean + a_upper_ci
+            upper.append(p)
 
         # Adjust for cost and return estimated reward per cost ratio
-        return (mean_estimate + upper_ci)
+        return upper
 
-    def calculate_lower_confidence_bound(self, action, count):
+    def calculate_lower_confidence_bound(self, round):
         """
         Calculate the upper confidence bound for a given action and context.
         """
-        mean = self.empirical_cost_means[action]
-        lower_cb =self.gamma * np.sqrt(np.log(count + 1)/ (self.arm_counts[action] + 1))
-
+        lower = []
+        for i in range(self.n_actions):
+            mean = self.empirical_cost_means[i]
+            lower_cb = np.sqrt(2*np.log(round + 1)/ (self.arm_counts[i] + 1))
+            lower.append(np.clip((mean-lower_cb), 0.000001, None))
         # Adjust for cost and return estimated reward per cost ratio
-        return (mean + lower_cb)
+        return lower
 
-    def select_arm(self, context, count):
+    def select_arm(self, context, round):
         """
         Select the arm with the highest upper confidence bound, adjusted for cost.
         """
-        p = np.array([self.calculate_upper_confidence_bound(a, context, count) for a in range(self.n_actions)])
-        l = np.array([self.calculate_lower_confidence_bound(a, count) for a in range(self.n_actions)])
-        p += np.random.random(len(p)) * 0.000001  # Avoid bias with tie-breaking by adding small noise
-        res = p/l
-        return np.argmax(res)
+        upper = np.array(self.calculate_upper_confidence_bound(context, round))
+        lower = np.array(self.calculate_lower_confidence_bound(round))
+        ratio = upper/(lower + 0.0000001)
+        return np.argmax(ratio)
 
     def update_parameters(self, chosen_arm, context, actual_reward):
         """
@@ -95,14 +101,17 @@ class LinUCB:
         # Calculate true rewards based on context and true_theta
         true_rewards = self.contexts.dot(self.true_theta.T)
         i = 0
+        c = 0
         while self.budget > np.max(self.cost):
             context = self.contexts[i]
             chosen_arm = self.select_arm(context, i)
             self.arm_counts[chosen_arm] += 1
 
-            # Calculate reward for chosen arm based on true theta
+            # Calculate reward and optimal reward
             actual_reward = true_rewards[i, chosen_arm] / self.cost[chosen_arm]
             optimal_arm = np.argmax(true_rewards[i] / self.cost)
+            if(optimal_arm != chosen_arm):
+               c +=1
 
             # Update rewards and norms
             self.rewards[i] = actual_reward
@@ -114,16 +123,17 @@ class LinUCB:
             self.update_parameters(chosen_arm, context, true_rewards[i, chosen_arm])
             self.choices[i] = chosen_arm
 
-            self.summed_regret += (opt_rew - actual_reward)
+            self.summed_regret += opt_rew - actual_reward
 
             self.logger.track_rep(self.repetition)
-            self.logger.track_approach(2)
+            self.logger.track_approach(0)
             self.logger.track_round(i)
             self.logger.track_regret(self.summed_regret)
             self.logger.track_normalized_budget((self.og_budget - self.budget)/ self.og_budget)
             self.logger.track_spent_budget(self.og_budget - self.budget)
             self.logger.finalize_round()
             i += 1
+        print('Lin', self.summed_regret)
 
     def plot_results(self):
         """
@@ -133,11 +143,11 @@ class LinUCB:
 
         # Plot cumulative reward
         plt.subplot(1, 2, 1)
-        plt.plot(np.cumsum(self.optimal_reward) - np.cumsum(self.rewards)[:len(self.optimal_reward)], label='Cumulative regret')
+        plt.plot(np.cumsum(self.optimal_reward) - np.cumsum(self.rewards[:len(self.optimal_reward)]), label='Cumulative regret')
         plt.xlabel('Rounds')
         plt.ylabel('Cumulative Reward')
         plt.legend()
-        plt.title('Cumulative Reward vs Optimal')
+        plt.title('Regret')
 
         # Plot norms to check convergence
         plt.subplot(1, 2, 2)
@@ -148,7 +158,6 @@ class LinUCB:
         plt.title('Convergence of Theta Estimates')
 
         plt.show()
-
 
 # Parameters
 n = 2500
