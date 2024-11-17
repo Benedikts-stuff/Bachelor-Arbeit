@@ -5,10 +5,10 @@ class UCB_Bandit:
     def __init__(self, n_arms, delta, seed):
         self.seed = seed
         #np.random.seed(seed)
-        self.n_arms = n_arms  # Anzahl der Arme
-        self.delta = delta  # Parameter für den Konfidenzbonus
-        self.arm_counts = np.zeros(n_arms)  # Zählungen für jeden Arm
-        self.arm_reward_means = np.zeros(n_arms)  # Durchschnittliche Belohnung für jeden Arm
+        self.n_arms = n_arms
+        self.delta = delta
+        self.arm_counts = np.zeros(n_arms)
+        self.arm_reward_means = np.zeros(n_arms)
 
 
     def select_arm(self):
@@ -74,10 +74,10 @@ cumulative_optimal_reward = np.cumsum(x)
 cumulative_regret_UCB = cumulative_optimal_reward - cumulative_reward
 
 plt.figure(figsize=(16, 10))
-#plt.plot(cumulative_regret_epsilon, label='Epsilon-Greedy')  # Füge eine Beschriftung hinzu
-plt.plot(cumulative_regret_UCB, label='UCB')  # Füge eine Beschriftung hinzu
+#plt.plot(cumulative_regret_epsilon, label='Epsilon-Greedy')
+plt.plot(cumulative_regret_UCB, label='UCB')
 plt.title("Durchschnittlicher regret über die Zeit")
 plt.xlabel("Runden")
 plt.ylabel("Regret")
-plt.legend()  # Legende anzeigen
+plt.legend()
 plt.show()

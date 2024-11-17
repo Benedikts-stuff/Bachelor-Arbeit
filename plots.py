@@ -18,8 +18,8 @@ cumulative_optimal_reward = np.cumsum(x)
 
 #cumulative reward
 plt.figure(figsize=(16, 10))
-plt.plot(epsilon_reward, label='Epsilon-Greedy')  # Füge eine Beschriftung hinzu
-plt.plot(ucb_reward, label='UCB')  # Füge eine Beschriftung hinzu
+plt.plot(epsilon_reward, label='Epsilon-Greedy')
+plt.plot(ucb_reward, label='UCB')
 plt.plot(cumulative_optimal_reward, label='Erwartete optimale Belohnung')
 plt.plot(thompson_reward, label='thompson' )
 #plt.plot(lin_ucb_reward, label='LinUCB' )
@@ -51,7 +51,7 @@ plt.plot(cumulative_regret_UCB, label='UCB')  # Füge eine Beschriftung hinzu
 plt.title("Durchschnittlicher regret über die Zeit")
 plt.xlabel("Runden")
 plt.ylabel("Regret")
-plt.legend()  # Legende anzeigen
+plt.legend()
 
 plt.savefig('regret.pdf')  # Speichern als PDF
 plt.show()
@@ -59,7 +59,7 @@ plt.show()
 
 plt.figure(figsize=(16, 10))
 plt.plot(lin_ucb_reward2, label='LinUCBadsadad' )
-plt.plot(ucb_reward, label='UCB')  # Füge eine Beschriftung hinzu
+plt.plot(ucb_reward, label='UCB')
 plt.xlabel("Runden")
 plt.ylabel("Reward")
 plt.title("asdasdfasfaf")
