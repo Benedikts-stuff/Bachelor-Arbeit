@@ -7,7 +7,7 @@ class OmegaUCB:
     def __init__(self, n_actions, n_features, contexts, true_theta, cost, budget, logger, repetition, seed, p):
         """
         Initialize the LinUCB instance with parameters.
-
+        logger sollte None defaulted sein
         n_actions: Number of arms (actions).
         n_features: Number of features for each context.
         contexts: Array of context vectors (data points).

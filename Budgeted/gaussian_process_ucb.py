@@ -10,13 +10,14 @@ from scipy.optimize import minimize
 
 np.random.seed(42)
 # Parameter
-n_arms = 5  # Anzahl der Arme
+n_arms = 1  # Anzahl der Arme
 n_rounds = 10000  # Anzahl der Runden
 beta_t = 2  # Explorationsgewicht (β_t)
-n_features = 3  # Anzahl der Kontextfeatures
+n_features = 1  # Anzahl der Kontextfeatures
 noise_std = 0.1  # Standardabweichung des Rauschens
-train= [10, 20 , 50 , 100, 200, 500, 800, 1200, 2000, 3000, 4000, 5000,7000, 9000]
-plot =[]
+train= [3]
+num_points = 150
+X_test = np.linspace(-3, 3, num_points).reshape(-1, 1)
 
 class MyGPR(GaussianProcessRegressor):
     def __init__(self, kernel, alpha, normalize_y, n_restarts_optimizer,  _max_iter=100):
@@ -43,7 +44,7 @@ class MyGPR(GaussianProcessRegressor):
 # Wahre Belohnungsfunktion f*
 def true_reward_function(context, arm_id):
     if arm_id == 0:
-        return np.exp(0.5 * context[0] + 0.3 * context[1] + 0.2 * context[2])
+        return np.sin(0.5 * context[0] + 0.3)
     elif arm_id == 1:
         return np.exp(0.1 * context[0] + 0.8 * context[1] + 0.1 * context[2])
     elif arm_id == 2:
@@ -75,44 +76,52 @@ selected_arms = []
 observed_rewards = []
 
 # GP-UCB Algorithmus
-for i in range(len(train)):
-    for t in tqdm(range(n_rounds)):
-        # Generiere einen zufälligen Kontext
-        current_context = np.random.uniform(-1, 1, n_features)
 
-        # Berechne UCB für jeden Arm
-        ucb_values = []
-        for arm_id in range(n_arms):
-            if len(arm_contexts[arm_id]) > 0:
-                mu, sigma = gps[arm_id].predict(current_context.reshape(1, -1), return_std=True)
-                ucb = mu + beta_t * sigma
-            else:
-                ucb = np.array([np.inf])  # Arme ohne Daten bekommen maximalen UCB
-            ucb_values.append(ucb[0])
+for t in tqdm(range(n_rounds)):
+    # Generiere einen zufälligen Kontext
+    current_context = np.random.uniform(-3, 3, n_features)
 
-        # Wähle den Arm mit dem höchsten UCB
-        selected_arm = np.argmax(ucb_values)
-        selected_arms.append(selected_arm)
+    # Berechne UCB für jeden Arm
+    ucb_values = []
+    for arm_id in range(n_arms):
+        if len(arm_contexts[arm_id]) > 0:
+            mu, sigma = gps[arm_id].predict(current_context.reshape(1, -1), return_std=True)
+            ucb = mu + beta_t * sigma
+        else:
+            ucb = np.array([np.inf])  # Arme ohne Daten bekommen maximalen UCB
+        ucb_values.append(ucb[0])
 
-        # Berechne den echten Reward und füge Rauschen hinzu
-        true_reward = true_reward_function(current_context, selected_arm)
-        rew = [true_reward_function(current_context, arm) for arm in range(n_arms)]
-        opt_reward.append(np.max(rew))
-        observed_reward = true_reward
-        observed_rewards.append(observed_reward)
+    # Wähle den Arm mit dem höchsten UCB
+    selected_arm = np.argmax(ucb_values)
+    selected_arms.append(selected_arm)
 
-        # Speichere den Kontext und Reward für den gewählten Arm
-        arm_contexts[selected_arm].append(current_context)
-        arm_rewards[selected_arm].append(observed_reward)
+    # Berechne den echten Reward und füge Rauschen hinzu
+    true_reward = true_reward_function(current_context, selected_arm)
+    rew = [true_reward_function(current_context, arm) for arm in range(n_arms)]
+    opt_reward.append(np.max(rew))
+    observed_reward = true_reward
+    observed_rewards.append(observed_reward)
 
-        # Update des GP-Modells für den gewählten Arm
-        if t in train:
-            gps[selected_arm].fit(np.array(arm_contexts[selected_arm]), np.array(arm_rewards[selected_arm]))
+    # Speichere den Kontext und Reward für den gewählten Arm
+    arm_contexts[selected_arm].append(current_context)
+    arm_rewards[selected_arm].append(observed_reward)
+
+    # Update des GP-Modells für den gewählten Arm
+    if t in train:
+        gps[selected_arm].fit(np.array(arm_contexts[selected_arm]), np.array(arm_rewards[selected_arm]))
 
 
-# Ergebnisse anzeigen
-print("Ausgewählte Arme (erste 10 Runden):", selected_arms[:10])
-print("Beobachtete Rewards (erste 10 Runden):", observed_rewards[:10])
+plt.figure(figsize=(10, 6))
+plt.plot(X_test, [true_reward_function(x, 0) for x in X_test], 'r:', label='Wahre Funktion')
+plt.plot(X_test, np.array([gps[0].predict(x.reshape(-1,1))[0] for x in X_test]), 'b-', label='Gelernte Funktion (GP Vorhersage)')
+#plt.fill_between(X_test.ravel(), mu - 1.96 * sigma, mu + 1.96 * sigma, alpha=0.2, color='blue', label='95% Unsicherheit')
+#plt.scatter(X_train, y_train, color='black', zorder=10, label='Trainingsdaten')
+plt.legend(loc='upper left')
+plt.xlabel('x')
+plt.ylabel('y')
+plt.title('Gaussian Process Regression')
+plt.show()
+
 regret = np.array(opt_reward) - np.array(observed_rewards)
 
 plt.subplot(122)

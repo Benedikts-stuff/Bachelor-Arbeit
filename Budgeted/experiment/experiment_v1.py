@@ -14,9 +14,9 @@ from tqdm import tqdm
 import time  # Beispielweise zum Simulieren von Berechnungszeit
 
 from Budgeted.c_b_thompson import ThompsonSamplingContextualBandit
-from lin_ucb import LinUCB
-from olr_e_greedy import EpsilonGreedyContextualBandit
-from w_ucb import OmegaUCB
+from Budgeted.lin_ucb import LinUCB
+from Budgeted.olr_e_greedy import EpsilonGreedyContextualBandit
+from Budgeted.w_ucb import OmegaUCB
 
 import time
 
