@@ -10,12 +10,12 @@ from scipy.optimize import minimize
 
 np.random.seed(42)
 # Parameter
-n_arms = 1  # Anzahl der Arme
+n_arms = 5  # Anzahl der Arme
 n_rounds = 10000  # Anzahl der Runden
 beta_t = 2  # Explorationsgewicht (β_t)
-n_features = 1  # Anzahl der Kontextfeatures
+n_features = 8  # Anzahl der Kontextfeatures
 noise_std = 0.1  # Standardabweichung des Rauschens
-train= [3]
+train= [10, 20, 50 ,100, 500, 1000, 2000, 5000, 9000]
 num_points = 150
 X_test = np.linspace(-3, 3, num_points).reshape(-1, 1)
 
@@ -79,7 +79,7 @@ observed_rewards = []
 
 for t in tqdm(range(n_rounds)):
     # Generiere einen zufälligen Kontext
-    current_context = np.random.uniform(-3, 3, n_features)
+    current_context = np.random.uniform(-1, 1, n_features)
 
     # Berechne UCB für jeden Arm
     ucb_values = []
@@ -111,16 +111,16 @@ for t in tqdm(range(n_rounds)):
         gps[selected_arm].fit(np.array(arm_contexts[selected_arm]), np.array(arm_rewards[selected_arm]))
 
 
-plt.figure(figsize=(10, 6))
-plt.plot(X_test, [true_reward_function(x, 0) for x in X_test], 'r:', label='Wahre Funktion')
-plt.plot(X_test, np.array([gps[0].predict(x.reshape(-1,1))[0] for x in X_test]), 'b-', label='Gelernte Funktion (GP Vorhersage)')
+#plt.figure(figsize=(10, 6))
+#plt.plot(X_test, [true_reward_function(x, 0) for x in X_test], 'r:', label='Wahre Funktion')
+#plt.plot(X_test, np.array([gps[0].predict(x.reshape(-1,1))[0] for x in X_test]), 'b-', label='Gelernte Funktion (GP Vorhersage)')
 #plt.fill_between(X_test.ravel(), mu - 1.96 * sigma, mu + 1.96 * sigma, alpha=0.2, color='blue', label='95% Unsicherheit')
 #plt.scatter(X_train, y_train, color='black', zorder=10, label='Trainingsdaten')
-plt.legend(loc='upper left')
-plt.xlabel('x')
-plt.ylabel('y')
-plt.title('Gaussian Process Regression')
-plt.show()
+#plt.legend(loc='upper left')
+#plt.xlabel('x')
+#plt.ylabel('y')
+#plt.title('Gaussian Process Regression')
+#plt.show()
 
 regret = np.array(opt_reward) - np.array(observed_rewards)
 
