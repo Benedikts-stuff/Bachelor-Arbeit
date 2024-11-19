@@ -15,6 +15,7 @@ n_rounds = 10000  # Anzahl der Runden
 beta_t = 2  # Explorationsgewicht (β_t)
 n_features = 8  # Anzahl der Kontextfeatures
 noise_std = 0.1  # Standardabweichung des Rauschens
+# müsste man mit einer art knee finding method anpassen ( prüfen ob der algo die verteilung gelernt hat)
 train= [10, 20, 50 ,100, 500, 1000, 2000, 5000, 9000]
 num_points = 150
 X_test = np.linspace(-3, 3, num_points).reshape(-1, 1)
@@ -56,7 +57,7 @@ def true_reward_function(context, arm_id):
 
 
 
-# Gaussian Process Modelle für jeden Arm
+# Gaussian Process Modelle für jeden Arm mit mu_0 = 0 und sigma_0 = 1
 kernels = [
      RBF(length_scale=1.0, length_scale_bounds=(1e-10, 10))
     for _ in range(n_arms)

@@ -26,3 +26,11 @@ class Adversary:
                 self.rewards[i] = min(1, self.rewards[i] + 0.05)
 
         return self.rewards
+
+class Friend:
+    def __init__(self, rewards, seed):
+        random.seed(seed)
+        self.rewards = rewards
+
+    def dynamically_changing_rewards(self, round):
+        return self.rewards
