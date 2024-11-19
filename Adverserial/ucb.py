@@ -1,15 +1,13 @@
 import numpy as np
-import matplotlib.pyplot as plt
-from adversary import Adversary
 np.random.seed(42)
 # UCB-Bandit-Algorithmus-Klasse
 class UCB_Bandit:
     def __init__(self, n_arms, delta, n_rounds, reward_generator, seed):
         np.random.seed(seed)
-        self.n_arms = n_arms  # Anzahl der Arme
-        self.delta = delta  # Parameter für den Konfidenzbonus
-        self.arm_counts = np.zeros(n_arms)  # Zählungen für jeden Arm
-        self.arm_reward_means = np.zeros(n_arms)  # Durchschnittliche Belohnung für jeden Arm
+        self.n_arms = n_arms
+        self.delta = delta
+        self.arm_counts = np.zeros(n_arms)
+        self.arm_reward_means = np.zeros(n_arms)
         self.n_rounds = n_rounds
         self.reward_generator = reward_generator
         self.reward_history = []
@@ -33,7 +31,6 @@ class UCB_Bandit:
         self.arm_reward_means[arm] = ((n - 1) * self.arm_reward_means[arm] + reward) / n
 
     def run(self):
-        # Simuliere die Runden
         for n in range(self.n_rounds):
             arm = self.select_arm()
             rewards = self.reward_generator.dynamically_changing_rewards(n)

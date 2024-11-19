@@ -1,7 +1,6 @@
-import math
+
 import numpy as np
-from matplotlib import pyplot as plt
-from adversary import Adversary
+
 
 
 class EXP3:

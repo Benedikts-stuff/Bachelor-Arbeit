@@ -3,14 +3,14 @@ from ucb import UCB_Bandit
 import matplotlib.pyplot as plt
 from exp3 import EXP3
 import numpy as np
-from tqdm import tqdm
+
 
 np.random.seed(42)
 
 n_arms = 3
-n_rounds = 1000
-delta = 0.8
-eta = 0.1
+n_rounds = 300
+delta = 0.3
+eta = 0.3
 probs = [0.2, 0.3, 0.5]
 repetitions = 30
 
@@ -20,10 +20,11 @@ rewards2 = np.zeros(n_rounds)
 for i in range(repetitions):
     adversary = Adversary(probs, seed=i)
     bandit_exp = EXP3(eta, n_rounds, n_arms, adversary,i)
-    bandit_ucb = UCB_Bandit(n_arms, delta, n_rounds, adversary, i)
     bandit_exp.run()
-    bandit_ucb.run()
+
     rewards1 = np.add(rewards1, bandit_exp.reward_history)
+    bandit_ucb = UCB_Bandit(n_arms, delta, n_rounds, adversary, i)
+    bandit_ucb.run()
     rewards2 = np.add(rewards2, bandit_ucb.reward_history)
 
 

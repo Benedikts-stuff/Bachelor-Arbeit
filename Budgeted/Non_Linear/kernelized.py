@@ -3,7 +3,7 @@ from pyparsing import Empty
 from sklearn.neighbors import KernelDensity
 from scipy.stats import norm
 from matplotlib import pyplot as plt
-
+#TODO funktioniert nicht richtig, fixxen
 class KDEBandit:
     def __init__(self, n_arms, bandwidth=0.2):
         self.n_arms = n_arms
