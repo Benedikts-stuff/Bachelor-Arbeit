@@ -1,106 +1,110 @@
 import numpy as np
-from pyparsing import Empty
-from sklearn.neighbors import KernelDensity
-from scipy.stats import norm
-from matplotlib import pyplot as plt
-#TODO funktioniert nicht richtig, fixxen
-class KDEBandit:
-    def __init__(self, n_arms, bandwidth=0.2):
+from scipy.spatial.distance import cdist
+from numpy.linalg import inv
+import matplotlib.pyplot as plt
+import tqdm
+
+class KernelizedUCB:
+    def __init__(self, n_arms, kernel='rbf', length_scale=1.0, lambda_param=1.0, delta=0.1):
         self.n_arms = n_arms
-        self.bandwidth = bandwidth
-        self.kde_models = [KernelDensity(bandwidth=self.bandwidth) for _ in range(n_arms)]
-        self.data = {arm: [] for arm in range(n_arms)}
+        self.kernel = kernel
+        self.length_scale = length_scale
+        self.lambda_param = lambda_param
+        self.delta = delta
+
+        # Speicher für Kontext, Belohnungen und Kernels
+        self.contexts = {arm: [] for arm in range(n_arms)}
         self.rewards = {arm: [] for arm in range(n_arms)}
-        self.reward_history = []
-        self.optimal_reward_history = []
+        self.K_inverse = {arm: None for arm in range(n_arms)}  # Inverse des Kernel-Matrix
+
+    def rbf_kernel(self, X, Y):
+        """Berechnet den RBF-Kernel zwischen X und Y."""
+        dist = cdist(X / self.length_scale, Y / self.length_scale, metric='sqeuclidean')
+        return np.exp(-0.5 * dist)
 
     def update(self, arm, context, reward):
-        """Update the KDE model for the chosen arm."""
-        self.data[arm].append(context)
+        """Aktualisiert die gespeicherten Daten und die Kernel-Inverse."""
+        self.contexts[arm].append(context)
         self.rewards[arm].append(reward)
-        # Fit KDE model with current data
-        data_array = np.array(self.data[arm])
-        reward_array = np.array(self.rewards[arm]).reshape(-1, 1)
-        combined_data = np.hstack((data_array, reward_array))
-        self.kde_models[arm].fit(combined_data)
 
-    def predict(self, context):
-        """Predict rewards for all arms using KDE."""
-        predictions = []
+        X = np.array(self.contexts[arm])
+        K = self.rbf_kernel(X, X) + self.lambda_param * np.eye(len(X))
+        self.K_inverse[arm] = inv(K)
+
+    def predict(self, arm, context):
+        """Sagt den Erwartungswert und die Unsicherheit für einen Kontext voraus."""
+        if len(self.contexts[arm]) == 0:
+            return 0, float('inf')  # Maximale Unsicherheit für unerforschte Arme
+
+        X = np.array(self.contexts[arm])
+        K_inv = self.K_inverse[arm]
+        k_star = self.rbf_kernel(X, context.reshape(1, -1))
+        k_star_star = self.rbf_kernel(context.reshape(1, -1), context.reshape(1, -1))
+
+        mu = k_star.T @ K_inv @ np.array(self.rewards[arm])
+        sigma = k_star_star - k_star.T @ K_inv @ k_star
+        return mu.item(), sigma.item()
+
+    def select_arm(self, context, t):
+        """Wählt den Arm basierend auf dem UCB-Kriterium."""
+        ucb_values = []
+        beta_t = np.sqrt(2 * np.log(1 / self.delta)) + np.sqrt(self.lambda_param)
+
         for arm in range(self.n_arms):
-            if len(self.data[arm]) > 0:
-                kde = self.kde_models[arm]
-                # Sample synthetic rewards for the given context
-                synthetic_data = np.hstack((np.tile(context, (100, 1)), np.linspace(0, 1, 100).reshape(-1, 1)))
-                log_probs = kde.score_samples(synthetic_data)
-            else:
-                log_probs = np.random.uniform(0, 1, 100)
-            probs = np.exp(log_probs)
-            mean_reward = np.dot(probs, np.linspace(0, 1, 100))  # Expected reward
-            predictions.append(mean_reward)
-        return predictions
+            mu, sigma = self.predict(arm, context)
+            ucb = mu + beta_t * np.sqrt(max(sigma, 0))
+            ucb_values.append(ucb)
 
-    def select_arm(self, context):
-        """Select the best arm based on predicted rewards."""
-        predicted_rewards = self.predict(context)
-        return np.argmax(predicted_rewards)
+        return np.argmax(ucb_values)
 
     def run(self, contexts, reward_generator):
-        """Run the bandit algorithm with a list of pre-defined contexts."""
-        for round_idx, context in enumerate(contexts):
-            arm = self.select_arm(context)
+        """Führt den Algorithmus mit gegebenen Kontexten aus."""
+        reward_history = []
+        optimal_reward_history = []
+
+        for t, context in enumerate(contexts):
+            arm = self.select_arm(context, t)
             rewards = reward_generator(context)
-            self.reward_history.append(rewards[arm])
-            self.optimal_reward_history.append(np.max(rewards))
+            reward_history.append(rewards[arm])
+            optimal_reward_history.append(np.max(rewards))
             self.update(arm, context, rewards[arm])
 
+        return reward_history, optimal_reward_history
 
 
-
-def linear_reward_generator(context, n_arm, true_weights, noise_std=0.1):
-    # Beispiel: Linearer Zusammenhang zwischen Kontext und Reward
-    reward = []
-    for arm in range(n_arm):
-        reward.append(np.dot(context, true_weights[arm]) + np.random.normal(0, noise_std))
-    return np.clip(reward, 0,1)  # Begrenze Reward auf [0, 1]
-
-def probabilistic_reward_generator(context, true_weights, num_arms):
-    # Belohnung basierend auf einer Wahrscheinlichkeit
-    reward = []
-    for arm in range(num_arms):
-        prob = sigmoid(np.dot(context, true_weights[arm]))
-        reward.append(np.random.binomial(1, prob))
-    return reward
-
-def sigmoid(x):
-    return 1 / (1 + np.exp(-x))
+# Beispiel: Linearer Reward-Generator
+def linear_reward_generator(context, n_arms, true_weights, noise_std=0.1):
+    rewards = []
+    for arm in range(n_arms):
+        reward = np.dot(context, true_weights[arm]) # + np.random.normal(0, noise_std)
+        rewards.append(np.clip(reward, 0, 1))
+    return rewards
 
 
-# Initialisierung
-n_arms = 3
-n_features = 2
-n_rounds = 1000
-true_weights = np.random.rand(n_arms, n_features)  # Wahre Gewichte für jede Aktion
-contexts = np.random.rand(n_rounds, n_features)  # 100 vordefinierte Kontexte
+# Beispielaufruf
+if __name__ == "__main__":
+    np.random.seed(42)
 
-# Linearer Zusammenhang
-bandit1 = KDEBandit(n_arms)
-bandit1.run(contexts, lambda ctx: linear_reward_generator(ctx, n_arms, true_weights))
-regret1 = np.cumsum(np.array(bandit1.optimal_reward_history) - np.array(bandit1.reward_history))
-print('regret1', regret1)
+    n_arms = 3
+    d = 5  # Dimension der Kontexte
+    true_weights = [np.random.rand(d) for _ in range(n_arms)]
+    contexts = [np.random.uniform(-1, 1, d) for _ in range(10000)]
 
-# Wahrscheinlichkeitsbasiert
-bandit2 = KDEBandit(n_arms)
-bandit2.run(contexts, lambda ctx: probabilistic_reward_generator(ctx, true_weights, n_arms))
-regret2 = np.cumsum(np.array(bandit2.optimal_reward_history) - np.array(bandit2.reward_history))
-print('regret2', regret2)
+    k_ucb = KernelizedUCB(n_arms, length_scale=1.0)
+    reward_history, optimal_reward_history = k_ucb.run(
+        contexts, lambda context: linear_reward_generator(context, n_arms, true_weights)
+    )
 
+    # Plot der Ergebnisse
+    cumulative_reward = np.cumsum(reward_history)
+    optimal_cumulative_reward = np.cumsum(optimal_reward_history)
 
+    regret = optimal_cumulative_reward - cumulative_reward
 
-
-
-plt.plot(regret1, label='linear model')
-plt.plot(regret2, label='stochastic model')
-plt.title("Cumulative regret")
-plt.legend()
-plt.show()
+    #plt.plot(cumulative_reward, label="Kernelized UCB")
+   # plt.plot(optimal_cumulative_reward, label="Optimal")
+    plt.plot(regret, label= "regret kernel UCB rbf")
+    plt.xlabel("Rounds")
+    plt.ylabel("Cumulative Reward")
+    plt.legend()
+    plt.show()

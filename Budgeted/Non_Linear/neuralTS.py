@@ -70,8 +70,11 @@ def gradient_descent_step(model, x, reward, lambda_, theta_0, eta, J):
     return theta
 
 
-def neural_thompson_sampling(T, d, m, L, lambda_, nu, eta, J, contexts, rewards, num_arms):
+def neural_thompson_sampling(T, d, m, L, lambda_, nu, eta, J, contexts, rewards, num_arms, i= 42):
     # Initialize network and posterior parameters
+    np.random.seed(i)
+    torch.manual_seed(i)
+
     arms = [initialize_neuralts_params(d, m, L, lambda_) for i in range(num_arms)] # = [model, U_0, theta_0]
     observed_rewards = []
     optimal_rewards = []
@@ -112,40 +115,45 @@ def neural_thompson_sampling(T, d, m, L, lambda_, nu, eta, J, contexts, rewards,
 
     return cumulative_reward, observed_rewards, optimal_rewards
 
+# Wahre Belohnungsfunktion f*
+def true_reward_function(context, arm_id):
+    if arm_id == 0:
+        return np.exp(0.5 * context[0] + 0.3 * context[1] + 0.6*context[2])
+    elif arm_id == 1:
+        return np.exp(0.1 * context[0] + 0.8 * context[1] + 0.1 * context[2])
+    elif arm_id == 2:
+        return np.exp(0.3 * context[0] + 0.3 * context[1] + 0.6 * context[2])
+    elif arm_id == 3:
+        return np.exp(0.2 * context[0] + 0.2 * context[1] + 0.2 * context[2])
+    elif arm_id == 4:
+        return np.exp(0.01 * context[0] + 0.4 * context[1] + 0.3 * context[2])
 
-# Hyperparameters (Example)
-T = 5000  # Number of rounds
-d = 3  # Context dimension
-m =48  # Neural network width 20
-L = 3  # Depth of network 3
-lambda_ = 1  # Regularization parameter
-nu = 0.4  # Exploration variance 1 0.2
-eta = 0.1  # Learning rate for gradient descent 0.01
-J = 10 # Number of gradient descent iterations 5
-num_arms = 3
-# True weights for each arm
-torch.manual_seed(42)
-np.random.seed(42)
-true_weights = [torch.rand(d) for i in range(num_arms)]
+#Hyperparameters (Example)
+def run(seed, context):
+    T = 10000  # Number of rounds
+    d = 3  # Context dimension
+    m =48  # Neural network width 20
+    L = 3  # Depth of network 3
+    lambda_ = [1, 1.5, 2]  # Regularization parameter 1
+    nu = [0.2, 0.4, 0.6]  # Exploration variance 1 0.2
+    eta = [0.1, 0.05, 0.2]  # Learning rate for gradient descent 0.05
+    J = [5, 7, 10] # Number of gradient descent iterations 10
+    num_arms = 3
+    # True weights for each arm
+    torch.manual_seed(seed)
+    np.random.seed(seed)
+    #true_weights = [torch.rand(d) for i in range(num_arms)]
 
-# Simulated contexts
-contexts = [torch.rand(d) for _ in range(T)]
+    # Simulated contexts
+    contexts = context#[((-1 - 1) * torch.rand(d) + 1) for _ in range(T)]
 
-# Generate rewards based on a sinusoidal function of the dot product
-rewards = [[torch.exp(torch.dot(true_weights[j], contexts[i])) for j in range(num_arms)] for i in range(len(contexts))] # reward = exp(f(x)) wo bei f linear in context x
+    # Generate rewards based on a sinusoidal function of the dot product
+    rewards = [[true_reward_function(contexts[i], j) for j in range(num_arms)] for i in range(len(contexts))] # reward = exp(f(x)) wo bei f linear in context x
 
-# Run Neural Thompson Sampling
-reward = neural_thompson_sampling(T, d, m, L, lambda_, nu, eta, J, contexts, rewards, num_arms)
-cumulative_reward = np.cumsum(reward[1])
-opt_reward = np.cumsum(reward[2])
-regret = opt_reward - cumulative_reward
-
-print("Cumulative Reward:", cumulative_reward)
-print("Optimal Cumulative Reward:", opt_reward)
-
-plt.subplot(122)
-#plt.plot(regret.cumsum(), label='linear model')
-plt.plot(regret, label='Neural TS')
-plt.title("Cumulative regret")
-plt.legend()
-plt.show()
+    # Run Neural Thompson Sampling
+    reward = neural_thompson_sampling(T, d, m, L, np.random.choice(lambda_), np.random.choice(nu), np.random.choice(eta), np.random.choice(J),
+                                      contexts, rewards, num_arms)
+    cumulative_reward = np.cumsum(reward[1])
+    opt_reward = np.cumsum(reward[2])
+    regret = opt_reward - cumulative_reward
+    return regret

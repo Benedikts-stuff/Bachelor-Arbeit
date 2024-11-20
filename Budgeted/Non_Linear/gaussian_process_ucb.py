@@ -41,7 +41,7 @@ def true_reward_function(context, arm_id):
 
 # Gaussian Process Modelle für jeden Arm mit mu_0 = 0 und sigma_0 = 1
 class GPUCB:
-    def __init__(self, n_arms, n_features, n_rounds, beta_t, train_rounds, seed):
+    def __init__(self, n_arms, n_features, n_rounds, beta_t, train_rounds, seed, context):
         np.random.seed(seed)
         self.n_arms = n_arms
         self.n_features = n_features
@@ -62,9 +62,11 @@ class GPUCB:
         self.selected_arms = []
         self.observed_rewards = []
 
+        self.context = context
+
     def run(self):
         for t in tqdm(range(self.n_rounds)):
-            current_context = np.random.uniform(-1, 1, self.n_features)
+            current_context = self.context[t]
             #adaptive beta
             #self.beta_t = 1/(np.log(t+1.00001)**2)
             ucb_values = []
