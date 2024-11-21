@@ -15,7 +15,10 @@ class LinUCB:
         cost: Cost per arm.
         alpha: Exploration parameter for the upper confidence bound.
         budget: Total budget for playing arms.
+
+
         """
+        #TODO: hier haben wir ein uniform weighting über ale feature dimensionsen -> ineffizient -> CoFinUCB anschauen
         np.random.seed(seed)
         self.n_actions = n_actions
         self.n_features = n_features

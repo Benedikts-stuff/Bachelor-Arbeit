@@ -4,7 +4,6 @@ from sklearn.gaussian_process.kernels import RBF
 from tqdm import tqdm
 import scipy.optimize as opt
 
-
 class MyGPR(GaussianProcessRegressor):
     def __init__(self, kernel, alpha, normalize_y, n_restarts_optimizer,  _max_iter=100):
         super().__init__(kernel, alpha=alpha, normalize_y= normalize_y, n_restarts_optimizer= n_restarts_optimizer)
@@ -41,14 +40,13 @@ def true_reward_function(context, arm_id):
 
 
 # Gaussian Process Modelle für jeden Arm mit mu_0 = 0 und sigma_0 = 1
-class GPUCB:
-    def __init__(self, n_arms, n_features, n_rounds, beta_t, train_rounds, seed, context, gamma):
+class GPTS:
+    def __init__(self, n_arms, n_features, n_rounds, lambda_, train_rounds, seed, context):
         np.random.seed(seed)
         self.n_arms = n_arms
-        self.gamma = gamma
+        self.lambda_ = lambda_
         self.n_features = n_features
         self.n_rounds = n_rounds
-        self.beta_t = beta_t
         self.train_rounds = train_rounds
 
         self.kernels = [RBF(length_scale=1.0, length_scale_bounds=(1e-10, 10)) for _ in range(n_arms)]
@@ -69,19 +67,19 @@ class GPUCB:
     def run(self):
         for t in tqdm(range(self.n_rounds)):
             current_context = self.context[t]
-            #adaptive beta
-            #self.beta_t = 1/(np.log(t+1.00001)**2)
-            ucb_values = []
+            sampled_values = []
+
             for arm_id in range(self.n_arms):
                 if len(self.arm_contexts[arm_id]) > 0:
                     mu, sigma = self.gps[arm_id].predict(current_context.reshape(1, -1), return_std=True)
-                    #beta = 2 * np.log(n_features * t**2 * np.pi**2 / (6 * self.gamma)) from paper
-                    ucb = mu + np.sqrt(self.beta_t) * sigma
+                    # Kovarianzmatrix: Quadratischer Wert von sigma, da wir nur 1 Punkt haben
+                    # Samplen aus N(mu, K)
+                    sampled_value = np.random.normal(mu, (np.sqrt(self.lambda_)/((1/3)*np.log(t+2))) * sigma)
                 else:
-                    ucb = np.array([np.inf])
-                ucb_values.append(ucb[0])
+                    sampled_value = np.array([np.inf])  # Für untrainierte Arme
+                sampled_values.append(sampled_value[0])
 
-            selected_arm = np.argmax(ucb_values)
+            selected_arm = np.argmax(sampled_values)
             self.selected_arms.append(selected_arm)
 
             true_reward = true_reward_function(current_context, selected_arm)
@@ -100,6 +98,8 @@ class GPUCB:
                 )
                 #adaptive beta
                 #self.beta_t = 1 / (np.log(t))
+
+
 #plt.figure(figsize=(10, 6))
 #plt.plot(X_test, [true_reward_function(x, 0) for x in X_test], 'r:', label='Wahre Funktion')
 #plt.plot(X_test, np.array([gps[0].predict(x.reshape(-1,1))[0] for x in X_test]), 'b-', label='Gelernte Funktion (GP Vorhersage)')
@@ -111,7 +111,16 @@ class GPUCB:
 #plt.title('Gaussian Process Regression')
 #plt.show()
 
-#regret = np.array(opt_reward) - np.array(observed_rewards)
+
+#np.random.seed(42)
+#train= [10, 20, 50 ,100, 200, 300, 500,700, 800, 1000, 2500, 5000, 7500,11000, 18000]
+#n_rounds = 10000
+#n_features = 3
+#context = [np.random.uniform(-1, 1, n_features) for i in range(n_rounds)]
+
+#bandit = GPTS(5, n_features, n_rounds, train, 42,  context)
+#bandit.run()
+#regret = np.array(bandit.opt_reward) - np.array(bandit.observed_rewards)
 
 #plt.subplot(122)
 #plt.plot(regret.cumsum(), label='linear model')

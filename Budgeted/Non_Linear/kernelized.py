@@ -18,12 +18,10 @@ class KernelizedUCB:
         self.K_inverse = {arm: None for arm in range(n_arms)}  # Inverse des Kernel-Matrix
 
     def rbf_kernel(self, X, Y):
-        """Berechnet den RBF-Kernel zwischen X und Y."""
         dist = cdist(X / self.length_scale, Y / self.length_scale, metric='sqeuclidean')
         return np.exp(-0.5 * dist)
 
     def update(self, arm, context, reward):
-        """Aktualisiert die gespeicherten Daten und die Kernel-Inverse."""
         self.contexts[arm].append(context)
         self.rewards[arm].append(reward)
 
@@ -32,7 +30,6 @@ class KernelizedUCB:
         self.K_inverse[arm] = inv(K)
 
     def predict(self, arm, context):
-        """Sagt den Erwartungswert und die Unsicherheit für einen Kontext voraus."""
         if len(self.contexts[arm]) == 0:
             return 0, float('inf')  # Maximale Unsicherheit für unerforschte Arme
 
@@ -46,7 +43,6 @@ class KernelizedUCB:
         return mu.item(), sigma.item()
 
     def select_arm(self, context, t):
-        """Wählt den Arm basierend auf dem UCB-Kriterium."""
         ucb_values = []
         beta_t = np.sqrt(2 * np.log(1 / self.delta)) + np.sqrt(self.lambda_param)
 
@@ -58,7 +54,6 @@ class KernelizedUCB:
         return np.argmax(ucb_values)
 
     def run(self, contexts, reward_generator):
-        """Führt den Algorithmus mit gegebenen Kontexten aus."""
         reward_history = []
         optimal_reward_history = []
 
@@ -88,7 +83,7 @@ if __name__ == "__main__":
     n_arms = 3
     d = 5  # Dimension der Kontexte
     true_weights = [np.random.rand(d) for _ in range(n_arms)]
-    contexts = [np.random.uniform(-1, 1, d) for _ in range(10000)]
+    contexts = [np.random.uniform(-1, 1, d) for _ in range(5000)]
 
     k_ucb = KernelizedUCB(n_arms, length_scale=1.0)
     reward_history, optimal_reward_history = k_ucb.run(
