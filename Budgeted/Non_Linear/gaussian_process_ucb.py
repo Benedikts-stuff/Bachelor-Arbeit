@@ -28,15 +28,20 @@ class MyGPR(GaussianProcessRegressor):
 # Wahre Belohnungsfunktion f*
 def true_reward_function(context, arm_id):
     if arm_id == 0:
-        return np.exp(0.5 * context[0] + 0.3 * context[1] + 0.6*context[2])
+        #return np.tanh((0.5 * context[0] + 0.3 * context[1] + 0.6 * context[2]))
+        return 1/(1 + np.exp(-(0.5 * context[0] + 0.3 * context[1] + 0.1 * context[2])))
     elif arm_id == 1:
-        return np.exp(0.1 * context[0] + 0.8 * context[1] + 0.1 * context[2])
+        return 1 / (1 + np.exp(-(0.1 * context[0] + 0.8 * context[1] + 0.1 * context[2])))
+        #return np.tanh(0.1 * context[0] + 0.8 * context[1] + 0.1 * context[2])
     elif arm_id == 2:
-        return np.exp(0.3 * context[0] + 0.3 * context[1] + 0.6 * context[2])
+        return 1 / (1 + np.exp(-(0.2 * context[0] + 0.2 * context[1] + 0.6 * context[2])))
+        #return np.tanh(0.3 * context[0] + 0.3 * context[1] + 0.6 * context[2])
     elif arm_id == 3:
-        return np.exp(0.2 * context[0] + 0.2 * context[1] + 0.2 * context[2])
+        return 1 / (1 + np.exp(-(0.2 * context[0] + 0.2 * context[1] + 0.2 * context[2])))
+        #return np.tanh(0.2 * context[0] + 0.2 * context[1] + 0.2 * context[2])
     elif arm_id == 4:
-        return np.exp(0.01 * context[0] + 0.4 * context[1] + 0.3 * context[2])
+        return 1 / (1 + np.exp(-(0.01 * context[0] + 0.4 * context[1] + 0.3 * context[2])))
+        #return np.tanh(0.01 * context[0] + 0.4 * context[1] + 0.3 * context[2])
 
 
 
@@ -51,7 +56,7 @@ class GPUCB:
         self.beta_t = beta_t
         self.train_rounds = train_rounds
 
-        self.kernels = [RBF(length_scale=1.0, length_scale_bounds=(1e-10, 10)) for _ in range(n_arms)]
+        self.kernels = [RBF(length_scale=0.2, length_scale_bounds=(1e-60, 10)) for _ in range(n_arms)]
         self.gps = [
             MyGPR(kernel=kernel, alpha=1e-2, normalize_y=True, n_restarts_optimizer=10)
             for kernel in self.kernels
@@ -65,6 +70,14 @@ class GPUCB:
         self.observed_rewards = []
 
         self.context = context
+        self.arm_counts = np.ones(self.n_arms)
+        self.sigma_t_1 = np.array([2.5, 2.5, 2.5, 2.5, 2.5])
+        self.B = 0.2 #max kernel norm
+        self.R = 1#function range
+
+    def compute_beta_t(self, gain):
+        beta_t = self.B + self.R * np.sqrt(2*(gain + 1+ np.log(1/self.gamma))) #gain is gamma
+        return beta_t
 
     def run(self):
         for t in tqdm(range(self.n_rounds)):
@@ -75,13 +88,17 @@ class GPUCB:
             for arm_id in range(self.n_arms):
                 if len(self.arm_contexts[arm_id]) > 0:
                     mu, sigma = self.gps[arm_id].predict(current_context.reshape(1, -1), return_std=True)
-                    #beta = 2 * np.log(n_features * t**2 * np.pi**2 / (6 * self.gamma)) from paper
-                    ucb = mu + np.sqrt(self.beta_t) * sigma
+                    beta = 2 * np.log(self.arm_counts[arm_id] * (t**2) * np.pi**2 / (6 * self.gamma))
+                    #gain =  self.sigma_t_1[arm_id] - sigma
+                    #self.sigma_t_1[arm_id] = sigma
+                    #beta_t = self.compute_beta_t(gain)
+                    ucb = mu + np.sqrt(beta) * sigma
                 else:
                     ucb = np.array([np.inf])
                 ucb_values.append(ucb[0])
 
             selected_arm = np.argmax(ucb_values)
+            self.arm_counts[selected_arm] += 1
             self.selected_arms.append(selected_arm)
 
             true_reward = true_reward_function(current_context, selected_arm)
@@ -93,11 +110,10 @@ class GPUCB:
             self.arm_contexts[selected_arm].append(current_context)
             self.arm_rewards[selected_arm].append(observed_reward)
 
-            if t in self.train_rounds:
-                self.gps[selected_arm].fit(
-                    np.array(self.arm_contexts[selected_arm]),
-                    np.array(self.arm_rewards[selected_arm])
-                )
+            self.gps[selected_arm].fit(
+                np.array(self.arm_contexts[selected_arm]),
+                np.array(self.arm_rewards[selected_arm])
+            )
                 #adaptive beta
                 #self.beta_t = 1 / (np.log(t))
 #plt.figure(figsize=(10, 6))

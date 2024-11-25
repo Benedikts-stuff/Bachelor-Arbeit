@@ -118,19 +118,24 @@ def neural_thompson_sampling(T, d, m, L, lambda_, nu, eta, J, contexts, rewards,
 # Wahre Belohnungsfunktion f*
 def true_reward_function(context, arm_id):
     if arm_id == 0:
-        return np.exp(0.5 * context[0] + 0.3 * context[1] + 0.6*context[2])
+        #return np.tanh((0.5 * context[0] + 0.3 * context[1] + 0.6 * context[2]))
+        return 1/(1 + np.exp(-(0.5 * context[0] + 0.3 * context[1] + 0.6 * context[2])))
     elif arm_id == 1:
-        return np.exp(0.1 * context[0] + 0.8 * context[1] + 0.1 * context[2])
+        return 1 / (1 + np.exp(-(0.1 * context[0] + 0.8 * context[1] + 0.1 * context[2])))
+        #return np.tanh(0.1 * context[0] + 0.8 * context[1] + 0.1 * context[2])
     elif arm_id == 2:
-        return np.exp(0.3 * context[0] + 0.3 * context[1] + 0.6 * context[2])
+        return 1 / (1 + np.exp(-(0.3 * context[0] + 0.3 * context[1] + 0.6 * context[2])))
+        #return np.tanh(0.3 * context[0] + 0.3 * context[1] + 0.6 * context[2])
     elif arm_id == 3:
-        return np.exp(0.2 * context[0] + 0.2 * context[1] + 0.2 * context[2])
+        return 1 / (1 + np.exp(-(0.2 * context[0] + 0.2 * context[1] + 0.2 * context[2])))
+        #return np.tanh(0.2 * context[0] + 0.2 * context[1] + 0.2 * context[2])
     elif arm_id == 4:
-        return np.exp(0.01 * context[0] + 0.4 * context[1] + 0.3 * context[2])
+        return 1 / (1 + np.exp(-(0.01 * context[0] + 0.4 * context[1] + 0.3 * context[2])))
+        #return np.tanh(0.01 * context[0] + 0.4 * context[1] + 0.3 * context[2])
 
 #Hyperparameters (Example)
 def run(seed, context):
-    T = 10000  # Number of rounds
+    T = 2000  # Number of rounds
     d = 3  # Context dimension
     m =48  # Neural network width 20
     L = 3  # Depth of network 3

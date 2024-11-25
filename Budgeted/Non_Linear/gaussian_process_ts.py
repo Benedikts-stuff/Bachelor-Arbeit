@@ -27,21 +27,25 @@ class MyGPR(GaussianProcessRegressor):
 # Wahre Belohnungsfunktion f*
 def true_reward_function(context, arm_id):
     if arm_id == 0:
-        return np.exp(0.5 * context[0] + 0.3 * context[1] + 0.6*context[2])
+        #return np.tanh((0.5 * context[0] + 0.3 * context[1] + 0.6 * context[2]))
+        return 1/(1 + np.exp(-(0.5 * context[0] + 0.3 * context[1] + 0.1 * context[2])))
     elif arm_id == 1:
-        return np.exp(0.1 * context[0] + 0.8 * context[1] + 0.1 * context[2])
+        return 1 / (1 + np.exp(-(0.1 * context[0] + 0.8 * context[1] + 0.1 * context[2])))
+        #return np.tanh(0.1 * context[0] + 0.8 * context[1] + 0.1 * context[2])
     elif arm_id == 2:
-        return np.exp(0.3 * context[0] + 0.3 * context[1] + 0.6 * context[2])
+        return 1 / (1 + np.exp(-(0.2 * context[0] + 0.2 * context[1] + 0.6 * context[2])))
+        #return np.tanh(0.3 * context[0] + 0.3 * context[1] + 0.6 * context[2])
     elif arm_id == 3:
-        return np.exp(0.2 * context[0] + 0.2 * context[1] + 0.2 * context[2])
+        return 1 / (1 + np.exp(-(0.2 * context[0] + 0.2 * context[1] + 0.2 * context[2])))
+        #return np.tanh(0.2 * context[0] + 0.2 * context[1] + 0.2 * context[2])
     elif arm_id == 4:
-        return np.exp(0.01 * context[0] + 0.4 * context[1] + 0.3 * context[2])
-
+        return 1 / (1 + np.exp(-(0.01 * context[0] + 0.4 * context[1] + 0.3 * context[2])))
+        #return np.tanh(0.01 * context[0] + 0.4 * context[1] + 0.3 * context[2])
 
 
 # Gaussian Process Modelle für jeden Arm mit mu_0 = 0 und sigma_0 = 1
 class GPTS:
-    def __init__(self, n_arms, n_features, n_rounds, lambda_, train_rounds, seed, context):
+    def __init__(self, n_arms, n_features, n_rounds, lambda_, train_rounds, seed, context, delta):
         np.random.seed(seed)
         self.n_arms = n_arms
         self.lambda_ = lambda_
@@ -49,7 +53,7 @@ class GPTS:
         self.n_rounds = n_rounds
         self.train_rounds = train_rounds
 
-        self.kernels = [RBF(length_scale=1.0, length_scale_bounds=(1e-10, 10)) for _ in range(n_arms)]
+        self.kernels = [RBF(length_scale=0.2, length_scale_bounds=(1e-60, 10)) for _ in range(n_arms)]
         self.gps = [
             MyGPR(kernel=kernel, alpha=1e-2, normalize_y=True, n_restarts_optimizer=10)
             for kernel in self.kernels
@@ -64,6 +68,18 @@ class GPTS:
 
         self.context = context
 
+        self.B = 0.2 #max kernel norm
+        self.R = 1#max reward
+        self.gamma = delta # initialisierung
+
+        self.sigma_t_1 = np.array([2.5, 2.5 ,2.5, 2.5, 2.5])
+
+        self.arm_counts = np.ones(n_arms)
+
+    def compute_beta_t(self, gain):
+        beta_t = self.B + self.R * np.sqrt(2*(gain + 1+ np.log(2/self.gamma))) #gain is gamma
+        return beta_t
+
     def run(self):
         for t in tqdm(range(self.n_rounds)):
             current_context = self.context[t]
@@ -74,12 +90,20 @@ class GPTS:
                     mu, sigma = self.gps[arm_id].predict(current_context.reshape(1, -1), return_std=True)
                     # Kovarianzmatrix: Quadratischer Wert von sigma, da wir nur 1 Punkt haben
                     # Samplen aus N(mu, K)
-                    sampled_value = np.random.normal(mu, (np.sqrt(self.lambda_)/((1/3)*np.log(t+2))) * sigma)
+                    #beta = self.compute_beta_t(t)
+                    #if t > 6000: beta = 0.000000001
+                    #vorher np.sqrt(self.lambda_) * sigma
+                    #This works
+                    gain = self.sigma_t_1[arm_id] - sigma
+                    self.sigma_t_1[arm_id] = sigma
+                    beta_t = self.compute_beta_t(gain)
+                    sampled_value = np.random.normal(mu, beta_t * sigma)
                 else:
                     sampled_value = np.array([np.inf])  # Für untrainierte Arme
                 sampled_values.append(sampled_value[0])
 
             selected_arm = np.argmax(sampled_values)
+            self.arm_counts[selected_arm] += 1
             self.selected_arms.append(selected_arm)
 
             true_reward = true_reward_function(current_context, selected_arm)
@@ -91,11 +115,10 @@ class GPTS:
             self.arm_contexts[selected_arm].append(current_context)
             self.arm_rewards[selected_arm].append(observed_reward)
 
-            if t in self.train_rounds:
-                self.gps[selected_arm].fit(
-                    np.array(self.arm_contexts[selected_arm]),
-                    np.array(self.arm_rewards[selected_arm])
-                )
+            self.gps[selected_arm].fit(
+                np.array(self.arm_contexts[selected_arm]),
+                np.array(self.arm_rewards[selected_arm])
+            )
                 #adaptive beta
                 #self.beta_t = 1 / (np.log(t))
 
