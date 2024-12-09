@@ -40,7 +40,7 @@ def sample_posterior_reward(model, x, theta, U_inv, nu, m, lamda):
     # Calculate posterior variance and sample reward
     sigma_sq = lamda *(grad.T @ U_inv @ grad) / m
     mean_reward = output.item()
-    sampled_reward = np.random.normal(mean_reward, max(nu * sigma_sq, 0.00000000001))
+    sampled_reward = np.random.normal(mean_reward, max(nu * np.sqrt(sigma_sq), 0.000000001))  #vorher ohne sqrt
 
     return sampled_reward, grad.detach()
 
@@ -135,14 +135,14 @@ def true_reward_function(context, arm_id):
 
 #Hyperparameters (Example)
 def run(seed, context):
-    T = 2000  # Number of rounds
+    T = 20000  # Number of rounds
     d = 3  # Context dimension
     m =48  # Neural network width 20
     L = 3  # Depth of network 3
-    lambda_ = [1, 1.5, 2]  # Regularization parameter 1
-    nu = [0.2, 0.4, 0.6]  # Exploration variance 1 0.2
-    eta = [0.1, 0.05, 0.2]  # Learning rate for gradient descent 0.05
-    J = [5, 7, 10] # Number of gradient descent iterations 10
+    lambda_ = [1]  # Regularization parameter 1
+    nu = [0.2]  # Exploration variance 1 0.2
+    eta = [0.01]  # Learning rate for gradient descent 0.05
+    J = [10] # Number of gradient descent iterations 10
     num_arms = 3
     # True weights for each arm
     torch.manual_seed(seed)
@@ -162,3 +162,15 @@ def run(seed, context):
     opt_reward = np.cumsum(reward[2])
     regret = opt_reward - cumulative_reward
     return regret
+
+
+context = [np.random.uniform(-1, 1, 3) for i in range(20000)]
+context_ts = [torch.tensor(context, dtype=torch.float32) for context in context]
+
+regret_ts = run(42, context_ts)
+plt.subplot(122)
+plt.plot(regret_ts, label='ts model')
+plt.title("Cumulative regret")
+plt.legend()
+plt.show()
+

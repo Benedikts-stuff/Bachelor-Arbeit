@@ -4,8 +4,12 @@ import pandas as pd
 import pylab as pl
 import seaborn as sns
 from matplotlib import pyplot as plt
-from concurrent.futures import ProcessPoolExecutor,as_completed
+from concurrent.futures import ProcessPoolExecutor
 import multiprocessing
+from concurrent.futures import as_completed
+import warnings
+warnings.filterwarnings("ignore")
+
 multiprocessing.set_start_method("spawn", force=True)
 from tqdm import tqdm
 from utils import*
@@ -46,7 +50,7 @@ algorithms= [
 
 # Runner-Klasse
 class Runner:
-    def __init__(self, n_rounds, num_arms=3, num_features=3, budget=4000):
+    def __init__(self, n_rounds, num_arms=3, num_features=3, budget=1000):
         self.iterations = n_rounds
         self.num_arms = num_arms
         self.num_features = num_features
@@ -54,25 +58,29 @@ class Runner:
         self.context = np.random.rand(self.num_rounds, self.num_features)
         self.budget = budget
         self.normalized_budget_points = np.linspace(0, 1, 100)
-        self.epsilon = np.array([0.05, 0.025, 0.1, 0.15, 0.125, 0.075, 0.09, 0.175, 0.2])
-        self.p = np.array([0.25, 0.3, 0.4, 0.6, 0.7, 0.8, 0.9, 0.95, 1.0])
+        self.epsilon = np.array([4]) #np.array([0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7])
+        self.p =np.array([0.95])
+        self.gamma= np.array([0.1])
 
     def run_experiment(self):
-        all_data = {name: [] for name in ['EpsilonGreedy', 'ThompsonSampling', 'LinUCB', 'OmegaUCB']}
-        with ProcessPoolExecutor(max_workers=4) as executor:
+        all_data = {name: [] for name in ['C-LinUCB', 'LinOmegaUCB','NeuralOmegaUCB', 'LinUCB', 'GPUCB']} #['C-UCB', 'C-ThompsonSampling', 'OmegaUCB','NeuralOmegaUCB', 'LinUCB', 'EpsilonGreedy', 'ThompsonSampling', 'GPUCB', 'GPTS']}   #{name: [] for name in ['EpsilonGreedy', 'ThompsonSampling', 'LinUCB', 'OmegaUCB']}
+        #['LinOmegaUCB','NeuralOmegaUCB', 'LinUCB', 'GPUCB', 'GPTS']
+        #['C-LinUCB', 'LinOmegaUCB','NeuralOmegaUCB', 'LinUCB', 'GPUCB']
+        #[ 'C-LinearThompsonSampling', 'EpsilonGreedy', 'LinearThompsonSampling', 'GPTS']
+        with ProcessPoolExecutor(max_workers=9) as executor:
             futures = []
 
             if __name__ == '__main__':
                 for i in tqdm(range(self.iterations), desc="Running Bandit Experiments"):
                     true_weights = generate_true_weights(self.num_arms, self.num_features, seed=i)
-                    true_cost = generate_true_cost(self.num_arms)
+                    true_cost = generate_true_cost(self.num_arms, 'beta')
 
                     for bandit_type in all_data.keys():
                         futures.append(
                             executor.submit(self.run_bandit, bandit_type, true_weights, true_cost, i)
                         )
 
-            for future in futures:
+            for future in tqdm(as_completed(futures), total=len(futures), desc="Processing Futures"):
                 bandit_type, result = future.result()
                 all_data[bandit_type].append(result)
 
@@ -98,10 +106,15 @@ class Runner:
     def plot_budget_normalised_regret(self, plot_data):
         plt.figure(figsize=(10, 6))
         styles = {
-            'EpsilonGreedy': ('blue', '-'),
-            'ThompsonSampling': ('green', '--'),
-            'LinUCB': ('orange', '-.'),
-            'OmegaUCB': ('red', ':')
+            'EpsilonGreedy': ('#1f77b4', '-'),  # Blau (durchgehend)
+            'LinearThompsonSampling': ('#ff7f0e', '--'),  # Orange (gestrichelt)
+            'LinUCB': ('#2ca02c', '-.'),  # Grün (gepunktet-gestrichelt)
+            'LinOmegaUCB': ('#9467bd', '-'),  # Rot (gepunktet)
+            'NeuralOmegaUCB': ('#d62728', ':'),  # Lila (durchgehend)
+            'GPUCB': ('#8c564b', '--'),  # Braun (gestrichelt)
+            'GPTS': ('#e377c2', '-.'),  # Rosa (gepunktet-gestrichelt)
+            'C-LinUCB': ('#7f7f7f', ':'),  # Grau (gepunktet)
+            'C-LinearThompsonSampling': ('#bcbd22', '--')  # Gelbgrün (gestrichelt)
         }
 
         for name, df in plot_data.items():
@@ -110,9 +123,10 @@ class Runner:
 
         plt.xlabel("Normalized Spent Budget")
         plt.ylabel("Cumulative Regret")
-        plt.ylim(0, 500)
+        plt.ylim(0, 250)
         plt.legend()
         plt.title("Regret Comparison of Different Bandit Approaches")
+        plt.savefig("comparison_linear_reward_with_budget")
         plt.show()
 
 
@@ -123,4 +137,5 @@ start_time = time.time()  # Startzeitpunkt
 runner.run_experiment()
 end_time = time.time()  # Endzeitpunkt
 execution_time = end_time - start_time  # Zeitdifferenz in Sekunden
-print(f"Die Methode dauerte {execution_time:.4f} Sekunden.")
+if __name__ == '__main__':
+    print(f"Die Methode dauerte {execution_time:.4f} Sekunden.")

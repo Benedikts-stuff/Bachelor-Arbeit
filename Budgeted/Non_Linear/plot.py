@@ -21,7 +21,7 @@ num_points = 150
 
 gamma = [0.1]
 
-repetitions = 30
+repetitions = 1
 regret_ucb = np.zeros(n_rounds)
 regret_ts = np.zeros(n_rounds)
 regret_gp_ts = np.zeros(n_rounds)
@@ -31,9 +31,9 @@ for i in range(repetitions):
     torch.manual_seed(i)
     context = [np.random.uniform(-1, 1, n_features) for i in range(n_rounds)]
     #context_ts = [torch.tensor(context, dtype=torch.float32) for context in context]
-    gpucb_bandit = GPUCB(n_arms, n_features, n_rounds, np.random.choice(beta_t), train, i, context, np.random.choice(gamma))
-    gpucb_bandit.run()
-    regret_ucb = np.add(regret_ucb,np.array(gpucb_bandit.opt_reward) - np.array(gpucb_bandit.observed_rewards))
+    #gpucb_bandit = GPUCB(n_arms, n_features, n_rounds, np.random.choice(beta_t), train, i, context, np.random.choice(gamma))
+    #gpucb_bandit.run()
+    #regret_ucb = np.add(regret_ucb,np.array(gpucb_bandit.opt_reward) - np.array(gpucb_bandit.observed_rewards))
 
     #NeuralTS
     #regret_ts += run(i, context_ts)
@@ -48,11 +48,11 @@ for i in range(repetitions):
 
 
 #regret_ts = regret_ts / repetitions
-regret_ucb = regret_ucb / repetitions
+#regret_ucb = regret_ucb / repetitions
 regret_gp_ts = regret_gp_ts / repetitions
 plt.subplot(122)
 #plt.plot(regret_ts, label='Neural TS')
-plt.plot(regret_ucb.cumsum(), label='GP UCB')
+#plt.plot(regret_ucb.cumsum(), label='GP UCB')
 plt.plot(regret_gp_ts.cumsum(), label='GP TS')
 plt.title("Cumulative regret")
 plt.legend()

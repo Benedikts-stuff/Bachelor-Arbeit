@@ -136,7 +136,7 @@ class LinUCB:
             self.logger.track_spent_budget(self.og_budget - self.budget)
             self.logger.finalize_round()
             i += 1
-        print('Lin', self.summed_regret)
+        print('finish linUCB')
 
     def plot_results(self):
         """

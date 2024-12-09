@@ -25,34 +25,15 @@ class MyGPR(GaussianProcessRegressor):
         self.optimizer = new_optimizer
         return super()._constrained_optimization(obj_func, initial_theta, bounds)
 
-# Wahre Belohnungsfunktion f*
-def true_reward_function(context, arm_id):
-    if arm_id == 0:
-        #return np.tanh((0.5 * context[0] + 0.3 * context[1] + 0.6 * context[2]))
-        return 1/(1 + np.exp(-(0.5 * context[0] + 0.3 * context[1] + 0.1 * context[2])))
-    elif arm_id == 1:
-        return 1 / (1 + np.exp(-(0.1 * context[0] + 0.8 * context[1] + 0.1 * context[2])))
-        #return np.tanh(0.1 * context[0] + 0.8 * context[1] + 0.1 * context[2])
-    elif arm_id == 2:
-        return 1 / (1 + np.exp(-(0.2 * context[0] + 0.2 * context[1] + 0.6 * context[2])))
-        #return np.tanh(0.3 * context[0] + 0.3 * context[1] + 0.6 * context[2])
-    elif arm_id == 3:
-        return 1 / (1 + np.exp(-(0.2 * context[0] + 0.2 * context[1] + 0.2 * context[2])))
-        #return np.tanh(0.2 * context[0] + 0.2 * context[1] + 0.2 * context[2])
-    elif arm_id == 4:
-        return 1 / (1 + np.exp(-(0.01 * context[0] + 0.4 * context[1] + 0.3 * context[2])))
-        #return np.tanh(0.01 * context[0] + 0.4 * context[1] + 0.3 * context[2])
-
 
 # Gaussian Process Modelle für jeden Arm mit mu_0 = 0 und sigma_0 = 1
 class GPTS:
-    def __init__(self, n_arms, n_features, n_rounds,  train_rounds, seed, context, delta= 0.1):
+    def __init__(self, n_arms, n_features, context, trueweights, cost, budget, logger,  repetition,  seed, delta= 0.1):
         np.random.seed(seed)
         self.n_arms = n_arms
        # self.lambda_ = lambda_
         self.n_features = n_features
-        self.n_rounds = n_rounds
-        self.train_rounds = train_rounds
+
 
         self.kernels = [RBF(length_scale=0.2, length_scale_bounds=(1e-60, 10)) for _ in range(n_arms)]
         self.gps = [
@@ -63,6 +44,18 @@ class GPTS:
         self.arm_contexts = [[] for _ in range(n_arms)]
         self.arm_rewards = [[] for _ in range(n_arms)]
         self.opt_reward = []
+        self.true_weights = trueweights
+        self.cost = cost
+        self.budget = budget
+        self.logger = logger
+        self.repetition = repetition
+        self.og_budget = budget
+        self.summed_regret = 0
+        self.cum = np.zeros(self.n_arms)
+        self.alpha =np.ones(self.n_arms)
+        self.beta = np.ones(self.n_arms)
+
+        self.empirical_cost_means = np.random.rand(self.n_arms)
 
         self.selected_arms = []
         self.observed_rewards = []
@@ -82,13 +75,14 @@ class GPTS:
         return beta_t
 
     def run(self):
-        for t in tqdm(range(self.n_rounds)):
-            current_context = self.context[t]
+       t= 0
+       while self.budget > np.max(self.cost):
+            context = self.context[t]
             sampled_values = []
-
+            cost = np.zeros(self.n_arms)
             for arm_id in range(self.n_arms):
                 if len(self.arm_contexts[arm_id]) > 0:
-                    mu, sigma = self.gps[arm_id].predict(current_context.reshape(1, -1), return_std=True)
+                    mu, sigma = self.gps[arm_id].predict(context.reshape(1, -1), return_std=True)
                     # Kovarianzmatrix: Quadratischer Wert von sigma, da wir nur 1 Punkt haben
                     # Samplen aus N(mu, K)
                     #beta = self.compute_beta_t(t)
@@ -98,30 +92,52 @@ class GPTS:
                     gain = self.sigma_t_1[arm_id] - sigma
                     self.sigma_t_1[arm_id] = sigma
                     beta_t = self.compute_beta_t(gain)
+                    #print("true rewards", np.dot(self.true_weights[arm_id], context), "guess: ", mu)
                     sampled_value = np.random.normal(mu, beta_t * sigma)
+
+                    cost = np.array([np.random.beta(self.alpha[i], self.beta[i]) for i in range(self.n_arms)])
                 else:
                     sampled_value = np.array([np.inf])  # Für untrainierte Arme
                 sampled_values.append(sampled_value[0])
 
-            selected_arm = np.argmax(sampled_values)
+            selected_arm = np.argmax(sampled_values/(cost + 0.000001))
             self.arm_counts[selected_arm] += 1
             self.selected_arms.append(selected_arm)
 
-            true_reward = true_reward_function(current_context, selected_arm)
-            all_rewards = [true_reward_function(current_context, arm) for arm in range(self.n_arms)]
-            self.opt_reward.append(np.max(all_rewards))
+            true_reward = np.dot(self.true_weights[selected_arm], context)
+            all_rewards = [np.dot(self.true_weights[arm], context) for arm in range(self.n_arms)]
+            self.opt_reward.append(np.max(all_rewards/ (np.array(self.cost) + 0.000001)))
             observed_reward = true_reward
             self.observed_rewards.append(observed_reward)
 
-            self.arm_contexts[selected_arm].append(current_context)
+            self.arm_contexts[selected_arm].append(context)
             self.arm_rewards[selected_arm].append(observed_reward)
 
-            self.gps[selected_arm].fit(
-                np.array(self.arm_contexts[selected_arm]),
-                np.array(self.arm_rewards[selected_arm])
-            )
+            cost_t = np.random.binomial(1, self.cost[selected_arm])
+            self.alpha[selected_arm] += cost_t
+            self.beta[selected_arm] += 1 - cost_t
+            self.arm_counts[selected_arm] += 1
+
+            if t < 1000:
+                self.gps[selected_arm].fit(
+                    np.array(self.arm_contexts[selected_arm]),
+                    np.array(self.arm_rewards[selected_arm])
+                )
                 #adaptive beta
                 #self.beta_t = 1 / (np.log(t))
+
+            self.summed_regret +=self.opt_reward[t] - (all_rewards[selected_arm]/ (self.cost[selected_arm] +0.000001))
+            self.budget -= self.cost[selected_arm]
+
+            self.logger.track_rep(self.repetition)
+            self.logger.track_approach(1)
+            self.logger.track_round(t)
+            self.logger.track_regret(self.summed_regret)
+            self.logger.track_normalized_budget((self.og_budget - self.budget)/ self.og_budget)
+            self.logger.track_spent_budget(self.og_budget - self.budget)
+            self.logger.finalize_round()
+            print(t)
+            t+=1
 
 
 #plt.figure(figsize=(10, 6))
@@ -136,18 +152,18 @@ class GPTS:
 #plt.show()
 
 
-np.random.seed(42)
-train= [10, 20, 50 ,100, 200, 300, 500,700, 800, 1000, 2500, 5000, 7500,11000, 18000]
-n_rounds = 1000
-n_features = 3
-context = [np.random.uniform(-1, 1, n_features) for i in range(n_rounds)]
+#np.random.seed(42)
+#train= [10, 20, 50 ,100, 200, 300, 500,700, 800, 1000, 2500, 5000, 7500,11000, 18000]
+#n_rounds = 1000
+#n_features = 3
+#context = [np.random.uniform(-1, 1, n_features) for i in range(n_rounds)]
 
-bandit = GPTS(5, n_features, n_rounds, train, 42,  context, 1)
-bandit.run()
-regret = np.array(bandit.opt_reward) - np.array(bandit.observed_rewards)
+#bandit = GPTS(5, n_features, n_rounds, train, 42,  context, 1)
+#bandit.run()
+#regret = np.array(bandit.opt_reward) - np.array(bandit.observed_rewards)
 
-plt.subplot(122)
-plt.plot(regret.cumsum(), label='linear model')
-plt.title("Cumulative regret")
-plt.legend()
-plt.show()
+#plt.subplot(122)
+#plt.plot(regret.cumsum(), label='linear model')
+#plt.title("Cumulative regret")
+#plt.legend()
+#plt.show()

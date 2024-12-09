@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 
 
 class EpsilonGreedyContextualBandit:
-    def __init__(self, d, epsilon,  n_arms, contexts, true_weights, true_cost, budget, logger, repetition, seed):
+    def __init__(self, d, epsilon,  n_arms, contexts, true_weights, true_cost, budget, logger, repetition, seed=0):
         """
         d: Dimension der Kontextvektoren
         epsilon: Wahrscheinlichkeit für Exploration
@@ -37,7 +37,9 @@ class EpsilonGreedyContextualBandit:
         self.summed_regret = 0
 
     def select_arm(self, context):
-        if np.random.rand() < min(1, self.epsilon * self.n_arms/(self.i +1)):
+        epsilon = min(1, self.epsilon * (self.n_arms/(self.i +1)))
+        print(epsilon)
+        if np.random.rand() < epsilon:
             return np.random.choice(self.n_arms)  # Exploration
         else:
             expected_rewards = np.array([np.dot(self.mu_hat[i], context) for i in range(self.n_arms)])
@@ -49,7 +51,7 @@ class EpsilonGreedyContextualBandit:
         self.mu_hat[chosen_arm] = np.linalg.inv(self.B[chosen_arm]).dot(self.f[chosen_arm])
 
         self.cum[chosen_arm] += np.random.binomial(1, self.costs[chosen_arm])
-        self.empirical_cost_means[chosen_arm] =  self.cum[chosen_arm] / (self.arm_counts[chosen_arm] +1)
+        self.empirical_cost_means[chosen_arm] =  (self.cum[chosen_arm])/ (self.arm_counts[chosen_arm] +1)
 
         self.arm_counts[chosen_arm] += 1
 
@@ -69,8 +71,6 @@ class EpsilonGreedyContextualBandit:
             opt_arm = np.argmax(self.actual_reward_history[self.i] / self.costs)
             self.optimal_reward.append(optimal - observed_reward)
 
-            if opt_arm != chosen_arm:
-                count+=1
             self.summed_regret += optimal - observed_reward
 
             self.logger.track_rep(self.repetition)
@@ -89,11 +89,11 @@ class EpsilonGreedyContextualBandit:
 # Set parameters
 num_arms = 3
 num_features = 3
-num_rounds =100000
+num_rounds =10000
 true_weights = np.array([[0.5, 0.1, 0.2], [0.1, 0.5, 0.2], [0.2, 0.1, 0.5]])
 context = np.random.rand(num_rounds, num_features)
-epsilon = 0.1  # Exploration rate
-true_cost= np.array([0.8, 1, 0.6])
+epsilon = 0.2  # Exploration rate
+true_cost= np.array([1, 1, 1])
 budget = 1500
 #bandit_eg = EpsilonGreedyContextualBandit(num_features, epsilon, num_arms, context, true_weights, true_cost, budget)
 #bandit_eg.run()
@@ -102,9 +102,14 @@ budget = 1500
 
 # Plot comparison
 #optimal_reward = bandit_eg.optimal_reward
-#regret_eg = np.array(optimal_reward) - np.array(bandit_eg.observed_reward_history)
+#regret_eg = np.array(optimal_reward)
+
+#plt.subplot(122)
+#plt.plot(regret_eg.cumsum(), label='linear model')
+#plt.title("Cumulative regret")
+#plt.legend()
+#plt.show()
 
 
 
 # Kumulative Belohnung
-

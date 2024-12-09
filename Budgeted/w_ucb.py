@@ -4,7 +4,7 @@ from matplotlib import pyplot as plt
 
 
 class OmegaUCB:
-    def __init__(self, n_actions, n_features, contexts, true_theta, cost, budget, logger, repetition, seed, p):
+    def __init__(self, n_actions, n_features, contexts, true_theta, cost, budget, repetition,logger, seed, p):
         """
         Initialize the LinUCB instance with parameters.
         logger sollte None defaulted sein
@@ -26,7 +26,6 @@ class OmegaUCB:
         self.og_budget = budget
         self.cum = np.zeros(self.n_actions)
         self.arm_counts = np.zeros(self.n_actions)
-        self.gamma = 0.00000001
 
         self.empirical_cost_means = np.random.rand(self.n_actions)
         self.z = 1
@@ -56,6 +55,7 @@ class OmegaUCB:
             theta_hat = A_inv.dot(self.b[i])
             variance = context.dot(A_inv).dot(context)
             mu_r = theta_hat.dot(context)
+            #print(f"mean reward OmegaUCB  in runde {round} und arm {i}", mu_r)
             eta = 1
             arm_count = self.arm_counts[i]
             z = np.sqrt(2* self.p* np.log(round + 2))
@@ -80,6 +80,7 @@ class OmegaUCB:
         lower = []
         for i in range(self.n_actions):
             mu_c = self.empirical_cost_means[i]
+
             arm_count = self.arm_counts[i]
             eta = 1
             z = np.sqrt(2 * self.p * np.log(round + 2))
@@ -88,8 +89,8 @@ class OmegaUCB:
             B = 2 * arm_count * mu_c + z**2 * eta  # eig noch * (M-m) aber das ist hier gleich 1
             C = arm_count * mu_c**2
 
-            omega_c = B / (2 * A) + np.sqrt((B ** 2 / (4 * A ** 2)) - C / A)
-            lower.append(omega_c)
+            omega_c = B / (2 * A) - np.sqrt((B ** 2 / (4 * A ** 2)) - C / A)
+            lower.append(np.clip(omega_c, 0.000001, None))
         # Adjust for cost and return estimated reward per cost ratio
         return lower
 
@@ -128,6 +129,7 @@ class OmegaUCB:
 
             # Calculate reward and optimal reward
             actual_reward = true_rewards[i, chosen_arm] / self.cost[chosen_arm]
+            #print(f"mean rweward OmegaUCB chosen arm in runde {i} und arm {chosen_arm}",true_rewards[i, chosen_arm])
             optimal_arm = np.argmax(true_rewards[i] / self.cost)
 
             # Update rewards and norms
@@ -150,6 +152,7 @@ class OmegaUCB:
             self.logger.track_spent_budget(self.og_budget - self.budget)
             self.logger.finalize_round()
             i += 1
+        print('finish lin w ucb')
 
     def plot_results(self):
         """
@@ -176,19 +179,22 @@ class OmegaUCB:
         plt.show()
 
 
+
 # Parameters
-n = 2500
+n = 25000
 k = 3
 n_a = 3
 contexts = np.random.random((n, k))
 true_theta = np.array([[0.5, 0.1, 0.2], [0.1, 0.5, 0.2], [0.2, 0.1, 0.5]])
-cost = np.array([0.8, 1, 0.6])
+cost = np.array([1, 1, 1])
 alpha = 0.2
-budget = 1500
+budget = 15000
+seed = 0
+p = 0.95
 
 # Run the LinUCB algorithm
-#omega_ucb = OmegaUCB(n_actions=n_a, n_features=k, contexts=contexts, true_theta=true_theta, cost=cost, alpha=alpha,
-               # budget=budget)
+#omega_ucb = OmegaUCB(n_actions=n_a, n_features=k, contexts=contexts, true_theta=true_theta, cost=cost, budget=budget,repetition=seed ,seed=seed,
+ #             p= p)
 #omega_ucb.run()
 #omega_ucb.plot_results()
 #print(omega_ucb.theta_hat)

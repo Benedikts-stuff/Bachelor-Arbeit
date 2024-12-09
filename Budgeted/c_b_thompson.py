@@ -62,7 +62,7 @@ class ThompsonSamplingContextualBandit:
         Samplet Schätzungen der Gewichte (mu) aus einer Multinormalverteilung.
         """
         return np.array([
-            np.random.multivariate_normal(self.mu_hat[arm], self.variance ** 2 * np.linalg.inv(self.B[arm]))
+            np.random.multivariate_normal(self.mu_hat[arm], 0.2**2 * np.linalg.inv(self.B[arm]))
             for arm in range(self.n_arms)
         ])
 

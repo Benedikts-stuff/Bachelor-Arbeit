@@ -18,10 +18,10 @@ budget = 1000
 variance = 0.1
 alpha = 0.2
 
-bandit = ThompsonSamplingContextualBandit(num_features, variance, num_arms, context, true_weights, true_cost, budget)
-bandit.run()
-ucb_bandit = LinUCB(n_actions=num_arms, n_features=num_features, contexts=context, true_theta=true_weights, cost=true_cost, alpha=alpha, budget=budget)
-ucb_bandit.run()
+#bandit = ThompsonSamplingContextualBandit(num_features, variance, num_arms, context, true_weights, true_cost, budget)
+#bandit.run()
+#ucb_bandit = LinUCB(n_actions=num_arms, n_features=num_features, contexts=context, true_theta=true_weights, cost=true_cost, alpha=alpha, budget=budget)
+#ucb_bandit.run()
 #bandit_eg = EpsilonGreedyContextualBandit(num_features, epsilon, num_arms, context, true_weights, true_cost, budget=budget)
 #bandit_eg.run()
 #print('muHat', bandit_eg.mu_hat)

@@ -50,51 +50,6 @@ for i in range(0, n):
     b[choices[i]] += rewards[i] * x_i
 
 
-class UCB_Bandit:
-    def __init__(self, n_arms, delta, seed, means, t_rounds):
-        self.seed = seed
-        np.random.seed(seed)
-        self.n_arms = n_arms  # Anzahl der Arme
-        self.delta = delta  # Parameter für den Konfidenzbonus
-        self.arm_counts = np.zeros(n_arms)  # Zählungen für jeden Arm
-        self.arm_reward_means = np.zeros(n_arms)  # Durchschnittliche Belohnung für jeden Arm
-        self.actual_means = means
-        self.t_rounds = t_rounds
-        self.reward_history = np.zeros(self.t_rounds)
-
-
-    def select_arm(self):
-        ucb_of_arms = np.full(self.n_arms, np.inf)
-        for i in range(self.n_arms):
-            if self.arm_counts[i] == 0:
-                continue
-            else:
-                ucb_of_arms[i] = self.arm_reward_means[i] + np.sqrt((2 * np.log(1 / self.delta)) / self.arm_counts[i])
-
-        return np.argmax(ucb_of_arms)
-
-    def update(self, arm, reward):
-        self.arm_counts[arm] += 1
-        n = self.arm_counts[arm]
-        self.arm_reward_means[arm] = ((n - 1) * self.arm_reward_means[arm] + reward) / n
-
-    def execute(self):
-        for n in range(self.t_rounds):
-            arm = self.select_arm()
-            #print(arm)
-            ctr = self.actual_means[arm]
-            # reward  = np.random.binomial(1, ctr)
-            reward = ctr
-            self.update(arm, reward)
-            self.reward_history[n] = reward
-
-ucb_bandit = UCB_Bandit(400, 0.5, 42 , means, 5000)
-ucb_bandit.execute()
-max_mean = means.max()
-reward_all = np.cumsum(ucb_bandit.reward_history)
-opt = [max_mean for _ in range(ucb_bandit.t_rounds)]
-cumulative_optimal_reward = np.cumsum(opt)
-cumulative_regret_UCB = cumulative_optimal_reward - reward_all
 
 plt.figure(1, figsize=(10, 5))
 plt.subplot(121)
@@ -102,13 +57,6 @@ plt.plot(norms)
 plt.title("Frobeninus norm of estimated theta vs actual")
 plt.show()
 
-regret = np.array(P.max(axis=1) - rewards)
-plt.subplot(122)
-#plt.plot(regret.cumsum(), label='linear model')
-plt.plot(cumulative_regret_UCB, label='ucb')
-plt.title("Cumulative regret")
-plt.legend()
-plt.show()
 
 plt.subplot(122)
 plt.plot(rewards.cumsum(), label= 'linear_model')

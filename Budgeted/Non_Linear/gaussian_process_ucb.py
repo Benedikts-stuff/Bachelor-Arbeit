@@ -3,6 +3,7 @@ from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import RBF
 from tqdm import tqdm
 import scipy.optimize as opt
+from matplotlib import pyplot as plt
 
 
 class MyGPR(GaussianProcessRegressor):
@@ -43,6 +44,51 @@ def true_reward_function(context, arm_id):
         return 1 / (1 + np.exp(-(0.01 * context[0] + 0.4 * context[1] + 0.3 * context[2])))
         #return np.tanh(0.01 * context[0] + 0.4 * context[1] + 0.3 * context[2])
 
+def true_reward_function_2(context, arm_id):
+    if arm_id == 0:
+        #return np.tanh((0.5 * context[0] + 0.3 * context[1] + 0.6 * context[2]))
+        x = (0.5 * context[0] + 0.3 * context[1] + 0.1 * context[2])
+        reward = (
+                10 * (x ** 4)  # Leading term for 4th degree
+                - 15 * (x ** 3)  # Add negative cubic term
+                + 6 * (x ** 2)  # Add positive quadratic term
+                + 0.5 * x  # Linear term
+                + 0.1  # Constant offset
+        )
+
+        return reward/ 1.7
+
+    elif arm_id == 1:
+        #return np.tanh((0.5 * context[0] + 0.3 * context[1] + 0.6 * context[2]))
+        x = (0.3 * context[0] + 0.5 * context[1] + 0.1 * context[2])
+        reward = (
+                10 * (x ** 4)  # Leading term for 4th degree
+                - 15 * (x ** 3)  # Add negative cubic term
+                + 6 * (x ** 2)  # Add positive quadratic term
+                + 0.5 * x  # Linear term
+                + 0.1  # Constant offset
+        )
+
+        return reward/ 1.7
+    elif arm_id == 2:
+        #return np.tanh((0.5 * context[0] + 0.3 * context[1] + 0.6 * context[2]))
+        x = (0.1 * context[0] + 0.3 * context[1] + 0.5 * context[2])
+        reward = (
+                10 * (x ** 4)  # Leading term for 4th degree
+                - 15 * (x ** 3)  # Add negative cubic term
+                + 6 * (x ** 2)  # Add positive quadratic term
+                + 0.5 * x  # Linear term
+                + 0.1  # Constant offset
+        )
+
+        return reward/ 1.7
+    elif arm_id == 3:
+        return 1 / (1 + np.exp(-(0.2 * context[0] + 0.2 * context[1] + 0.2 * context[2])))
+        #return np.tanh(0.2 * context[0] + 0.2 * context[1] + 0.2 * context[2])
+    elif arm_id == 4:
+        return 1 / (1 + np.exp(-(0.01 * context[0] + 0.4 * context[1] + 0.3 * context[2])))
+        #return np.tanh(0.01 * context[0] + 0.4 * context[1] + 0.3 * context[2])
+
 
 
 # Gaussian Process Modelle für jeden Arm mit mu_0 = 0 und sigma_0 = 1
@@ -75,6 +121,10 @@ class GPUCB:
         self.B = 0.2 #max kernel norm
         self.R = 1#function range
 
+        self.cost = [1, 1, 1]
+        self.plot_rew = []
+
+
     def compute_beta_t(self, gain):
         beta_t = self.B + self.R * np.sqrt(2*(gain + 1+ np.log(1/self.gamma))) #gain is gamma
         return beta_t
@@ -82,8 +132,6 @@ class GPUCB:
     def run(self):
         for t in tqdm(range(self.n_rounds)):
             current_context = self.context[t]
-            #adaptive beta
-            #self.beta_t = 1/(np.log(t+1.00001)**2)
             ucb_values = []
             for arm_id in range(self.n_arms):
                 if len(self.arm_contexts[arm_id]) > 0:
@@ -97,40 +145,36 @@ class GPUCB:
                     ucb = np.array([np.inf])
                 ucb_values.append(ucb[0])
 
-            selected_arm = np.argmax(ucb_values)
+            selected_arm = np.argmax(ucb_values/np.array(self.cost))
             self.arm_counts[selected_arm] += 1
             self.selected_arms.append(selected_arm)
 
             true_reward = true_reward_function(current_context, selected_arm)
-            all_rewards = [true_reward_function(current_context, arm) for arm in range(self.n_arms)]
-            self.opt_reward.append(np.max(all_rewards))
+            self.plot_rew.append(true_reward/self.cost[selected_arm])
+
+            all_rewards = np.array([true_reward_function(current_context, arm) for arm in range(self.n_arms)])
+            self.opt_reward.append(np.max(all_rewards/self.cost))    #kosten nicht vergessen
             observed_reward = true_reward
             self.observed_rewards.append(observed_reward)
 
             self.arm_contexts[selected_arm].append(current_context)
             self.arm_rewards[selected_arm].append(observed_reward)
-
-            self.gps[selected_arm].fit(
-                np.array(self.arm_contexts[selected_arm]),
-                np.array(self.arm_rewards[selected_arm])
-            )
+            if t < 1000:
+                self.gps[selected_arm].fit(
+                    np.array(self.arm_contexts[selected_arm]),
+                    np.array(self.arm_rewards[selected_arm])
+                )
                 #adaptive beta
-                #self.beta_t = 1 / (np.log(t))
-#plt.figure(figsize=(10, 6))
-#plt.plot(X_test, [true_reward_function(x, 0) for x in X_test], 'r:', label='Wahre Funktion')
-#plt.plot(X_test, np.array([gps[0].predict(x.reshape(-1,1))[0] for x in X_test]), 'b-', label='Gelernte Funktion (GP Vorhersage)')
-#plt.fill_between(X_test.ravel(), mu - 1.96 * sigma, mu + 1.96 * sigma, alpha=0.2, color='blue', label='95% Unsicherheit')
-#plt.scatter(X_train, y_train, color='black', zorder=10, label='Trainingsdaten')
-#plt.legend(loc='upper left')
-#plt.xlabel('x')
-#plt.ylabel('y')
-#plt.title('Gaussian Process Regression')
-#plt.show()
+        print("alpha", [self.gps[i].alpha for i in range(self.n_arms)])
 
-#regret = np.array(opt_reward) - np.array(observed_rewards)
+context = [np.random.uniform(0, 1, 3) for i in range(2000)]
 
-#plt.subplot(122)
-#plt.plot(regret.cumsum(), label='linear model')
-#plt.title("Cumulative regret")
-#plt.legend()
-#plt.show()
+gpucb_bandit = GPUCB(n_arms = 3, n_features= 3, n_rounds =2000, beta_t=1, train_rounds=1, seed=0, context=context, gamma=0.1)
+gpucb_bandit.run()
+regret_ucb =np.array(gpucb_bandit.opt_reward) - np.array(gpucb_bandit.plot_rew)
+
+plt.subplot(122)
+plt.plot(regret_ucb.cumsum(), label='linear model')
+plt.title("Cumulative regret")
+plt.legend()
+plt.show()

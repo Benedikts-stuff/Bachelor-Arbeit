@@ -1,194 +1,211 @@
 import numpy as np
 from matplotlib import pyplot as plt
+from sklearn.gaussian_process import GaussianProcessRegressor
+from sklearn.gaussian_process.kernels import RBF
+import scipy.optimize as opt
+import pandas as pd
+
+
+class MyGPR(GaussianProcessRegressor):
+    def __init__(self, kernel, alpha, normalize_y, n_restarts_optimizer,  _max_iter=100):
+        super().__init__(kernel, alpha=alpha, normalize_y= normalize_y, n_restarts_optimizer= n_restarts_optimizer)
+        self._max_iter = _max_iter
+
+    def _constrained_optimization(self, obj_func, initial_theta, bounds):
+        def new_optimizer(obj_func, initial_theta, bounds):
+            result = opt.minimize(
+                obj_func,
+                initial_theta,
+                method="L-BFGS-B",
+                jac=True,
+                bounds=bounds,
+                options={"maxiter": self._max_iter}
+            )
+            return result.x, result.fun  # Optimierte Parameter und minimaler Funktionswert
+
+        self.optimizer = new_optimizer
+        return super()._constrained_optimization(obj_func, initial_theta, bounds)
+
+# Wahre Belohnungsfunktion f*
+def true_reward_function(context, action):
+    if action == 0:
+        #return np.tanh((0.5 * context[0] + 0.3 * context[1] + 0.6 * context[2]))
+        return 1/(1 + np.exp(-(np.tanh(0.5 * context[0] + 0.3 * context[1] + 0.1 * context[2]))))
+    elif action == 1:
+        return 1 / (1 + np.exp(-np.sin((0.1 * context[0] + 0.8 * context[1] + 0.1 * context[2]))))
+        #return np.tanh(0.1 * context[0] + 0.8 * context[1] + 0.1 * context[2])
+    elif action == 2:
+        return 1 / (1 + np.exp(-np.cos((0.2 * context[0] + 0.2 * context[1] + 0.6 * context[2]))))
+        #return np.tanh(0.3 * context[0] + 0.3 * context[1] + 0.6 * context[2])
+    elif action == 3:
+        return 1 / (1 + np.exp(-(0.2 * context[0] + 0.2 * context[1] + 0.2 * context[2])))
+        #return np.tanh(0.2 * context[0] + 0.2 * context[1] + 0.2 * context[2])
+    elif action == 4:
+        return 1 / (1 + np.exp(-(0.01 * context[0] + 0.4 * context[1] + 0.3 * context[2])))
+        #return np.tanh(0.01 * context[0] + 0.4 * context[1] + 0.3 * context[2])
 
 
 
-class OmegaUCB:
-    def __init__(self, n_actions, n_features, contexts, true_theta, cost, budget, logger, repetition, seed, p):
-        """
-        Initialize the LinUCB instance with parameters.
-        logger sollte None defaulted sein
-        n_actions: Number of arms (actions).
-        n_features: Number of features for each context.
-        contexts: Array of context vectors (data points).
-        true_theta: True weight matrix (reward parameter) for each arm.
-        cost: Cost per arm.
-        alpha: Exploration parameter for the upper confidence bound.
-        budget: Total budget for playing arms.
-        """
+# Gaussian Process Modelle für jeden Arm mit mu_0 = 0 und sigma_0 = 1
+class GPUCB:
+    def __init__(self, n_arms, n_features, n_rounds, cost, context, budget, p, seed):
         np.random.seed(seed)
-        self.n_actions = n_actions
+        self.n_arms = n_arms
         self.n_features = n_features
-        self.contexts = contexts  #- 0.5
-        self.true_theta = true_theta
-        self.cost = cost
+        self.n_rounds = n_rounds
         self.budget = budget
-        self.og_budget = budget
-        self.cum = np.zeros(self.n_actions)
-        self.arm_counts = np.zeros(self.n_actions)
-        self.gamma = 0.00000001
+        self.cost = cost
+        self.p = p
 
-        self.empirical_cost_means = np.random.rand(self.n_actions)
-        self.z = 1
-        self.p = p #0.95
-        self.repetition = repetition
-        self.logger = logger
-        self.summed_regret = 0
+        self.kernels = [RBF(length_scale=0.2, length_scale_bounds=(1e-60, 10)) for _ in range(n_arms)]
+        self.gps = [
+            MyGPR(kernel=kernel, alpha=1e-2, normalize_y=True, n_restarts_optimizer=10)
+            for kernel in self.kernels
+        ]
+
+        self.arm_contexts = [[] for _ in range(n_arms)]
+        self.arm_rewards = [[] for _ in range(n_arms)]
+        self.opt_reward = []
+        self.empirical_cost_means = np.random.rand(self.n_arms)
+        self.cum = np.zeros(self.n_arms)
+
+        self.selected_arms = []
+        self.observed_rewards = []
+
+        self.context = context
+        self.arm_counts = np.ones(self.n_arms)
+        self.sigma_t_1 = np.array([2.5, 2.5, 2.5, 2.5, 2.5])
+        self.B = 0.2 #max kernel norm
+        self.R = 1#function range
+        self.sigma_t_1 = np.array([2.5, 2.5, 2.5, 2.5, 2.5])
+        self.gamma = 0.1
+        self.count = 0
+        self.picked_arms = []
 
 
-        # Initialize variables
-        self.A = np.array([np.identity(n_features) for _ in range(n_actions)])  # Covariance matrices for each arm
-        self.b = np.zeros((n_actions, n_features))  # Linear predictors for each arm
-        self.theta_hat = np.zeros((n_actions, n_features))  # Estimated theta for each arm
-        self.choices = np.zeros(len(contexts), dtype=int)
-        self.rewards = np.zeros(len(contexts))
-        self.optimal_reward = []
-        self.norms = np.zeros(len(contexts))
 
-
-    def calculate_upper_confidence_bound(self, context, round):
+    def calculate_upper_confidence_bound(self, context, arm_id, round):
         """
         Calculate the upper confidence bound for a given action and context.
         """
-        upper =[]
-        for i in range(self.n_actions):
-            A_inv = np.linalg.inv(self.A[i])
-            theta_hat = A_inv.dot(self.b[i])
-            variance = context.dot(A_inv).dot(context)
-            mu_r = theta_hat.dot(context)
-            eta = 1
-            arm_count = self.arm_counts[i]
-            z = np.sqrt(2* self.p* np.log(round + 2))
-            if mu_r != 0 and mu_r != 1:
-                eta = 1 #
+        mu_r, std = self.gps[arm_id].predict(context.reshape(1, -1), return_std=True)
+        eta = 1
+        arm_count = self.arm_counts[arm_id]
+        z = np.sqrt(2* self.p* np.log(round + 2))
+        if mu_r != 0 and mu_r != 1:
+            eta = 1 #std / ((1 - mu_r) * mu_r)
 
-           # print('LOOOL', mu_r )
-            A = arm_count + z**2 * eta
-            B = 2*arm_count*mu_r + z**2 * eta # eig noch * (M-m) aber das ist hier gleich 1
-            C = arm_count* mu_r**2
-            x = np.sqrt((B**2 / (4* A**2)) - (C/A))
-            omega_r = (B/(2*A)) + x
-            upper.append(omega_r)
 
-        # Adjust for cost and return estimated reward per cost ratio
-        return upper
+       # print('LOOOL', mu_r )
+        A = arm_count + z**2 * eta
+        B = 2*arm_count*mu_r + z**2 * eta # eig noch * (M-m) aber das ist hier gleich 1
+        C = arm_count* mu_r**2
+        x = np.sqrt(np.clip((B**2 / (4* A**2)) - (C/A), 0, None))
+        omega_r = (B/(2*A)) + x
 
-    def calculate_lower_confidence_bound(self, round):
-        """
-        Calculate the upper confidence bound for a given action and context.
-        """
-        lower = []
-        for i in range(self.n_actions):
-            mu_c = self.empirical_cost_means[i]
-            arm_count = self.arm_counts[i]
-            eta = 1
-            z = np.sqrt(2 * self.p * np.log(round + 2))
+        return omega_r
 
-            A = arm_count + z**2 * eta
-            B = 2 * arm_count * mu_c + z**2 * eta  # eig noch * (M-m) aber das ist hier gleich 1
-            C = arm_count * mu_c**2
 
-            omega_c = B / (2 * A) + np.sqrt((B ** 2 / (4 * A ** 2)) - C / A)
-            lower.append(omega_c)
-        # Adjust for cost and return estimated reward per cost ratio
-        return lower
+    def calculate_lower_confidence_bound(self, arm_id, round):
+        mu_c = self.empirical_cost_means[arm_id]
+        arm_count = self.arm_counts[arm_id]
+        eta = 1
+        z = np.sqrt(2 * self.p * np.log(round + 2))
 
-    def select_arm(self, context, round):
-        """
-        Select the arm with the highest upper confidence bound, adjusted for cost.
-        """
-        upper = np.array(self.calculate_upper_confidence_bound(context, round))
-        lower = np.array(self.calculate_lower_confidence_bound(round))
-        ratio = upper/lower
-        return np.argmax(ratio)
+        A = arm_count + z**2 * eta
+        B = 2 * arm_count * mu_c + z**2 * eta  # eig noch * (M-m) aber das ist hier gleich 1
+        C = arm_count * mu_c**2
 
-    def update_parameters(self, chosen_arm, context, actual_reward):
-        """
-        Update the parameters for the chosen arm based on observed context and reward.
-        """
-        self.A[chosen_arm] += np.outer(context, context)
-        self.b[chosen_arm] += actual_reward * context
-        self.theta_hat[chosen_arm] = np.linalg.inv(self.A[chosen_arm]).dot(self.b[chosen_arm])
-
-        self.cum[chosen_arm] += np.random.binomial(1, self.cost[chosen_arm])
-        self.empirical_cost_means[chosen_arm] = self.cum[chosen_arm] / (self.arm_counts[chosen_arm] + 1)
-        self.budget -= self.cost[chosen_arm]
+        omega_c = B / (2 * A) + np.sqrt((B ** 2 / (4 * A ** 2)) - C / A)
+        return np.clip(omega_c, 0.00000001, None)
 
     def run(self):
-        """
-        Run the LINUCB algorithm over all rounds within the given budget.
-        """
-        # Calculate true rewards based on context and true_theta
-        true_rewards = self.contexts.dot(self.true_theta.T)
-        i = 0
-        while self.budget > np.max(self.cost):
-            context = self.contexts[i]
-            chosen_arm = self.select_arm(context, i)
-            self.arm_counts[chosen_arm] += 1
+        t = 0
+        while self.budget >= np.max(self.cost):
+            current_context = self.context[t]
+            ucb_values = []
+            for arm_id in range(self.n_arms):
+                if len(self.arm_contexts[arm_id]) > 0:
+                    upper = self.calculate_upper_confidence_bound(current_context,arm_id, t)
+                    lower = self.calculate_lower_confidence_bound(arm_id, t)
+                    c_r_ratio = upper / lower
+                else:
+                    c_r_ratio = np.array([np.inf])
+                ucb_values.append(c_r_ratio[0])
 
-            # Calculate reward and optimal reward
-            actual_reward = true_rewards[i, chosen_arm] / self.cost[chosen_arm]
-            optimal_arm = np.argmax(true_rewards[i] / self.cost)
+            selected_arm = np.argmax(ucb_values)
+            self.arm_counts[selected_arm] += 1
+            self.selected_arms.append(selected_arm)
 
-            # Update rewards and norms
-            self.rewards[i] = actual_reward
-            opt_rew = true_rewards[i, optimal_arm] / self.cost[optimal_arm]
-            self.optimal_reward.append(opt_rew)
-            self.norms[i] = np.linalg.norm(self.theta_hat - self.true_theta, 'fro')
+            true_reward = true_reward_function(current_context, selected_arm)
+            all_rewards = np.array([true_reward_function(current_context, arm) for arm in range(self.n_arms)])
+            opt_arm = np.argmax(all_rewards/self.cost)
+            if selected_arm != opt_arm:
+                self.count = self.count + 1
+                self.picked_arms.append(self.count)
+            else:
+                self.picked_arms.append(self.count)
 
-            # Update parameters for the chosen arm
-            self.update_parameters(chosen_arm, context, true_rewards[i, chosen_arm])
-            self.choices[i] = chosen_arm
+            #print("opt_arm: ", opt_arm, "%n", "chosen: ", selected_arm )
+            self.opt_reward.append(np.max(all_rewards/self.cost))
+            observed_reward = true_reward
+            self.observed_rewards.append(observed_reward/self.cost[selected_arm])
 
-            self.summed_regret += opt_rew - actual_reward
+            self.arm_contexts[selected_arm].append(current_context)
+            self.arm_rewards[selected_arm].append(observed_reward)
 
-            self.logger.track_rep(self.repetition)
-            self.logger.track_approach(0)
-            self.logger.track_round(i)
-            self.logger.track_regret(self.summed_regret)
-            self.logger.track_normalized_budget((self.og_budget - self.budget)/ self.og_budget)
-            self.logger.track_spent_budget(self.og_budget - self.budget)
-            self.logger.finalize_round()
-            i += 1
+            if t <1000:
+                self.gps[selected_arm].fit(
+                    np.array(self.arm_contexts[selected_arm]),
+                    np.array(self.arm_rewards[selected_arm])
+                )
 
-    def plot_results(self):
-        """
-        Plot the results showing the cumulative reward and convergence of norms.
-        """
-        plt.figure(figsize=(14, 6))
+            if (len(self.arm_contexts[selected_arm]) + 1) % 1000 == 0:
+                self.gps[selected_arm].fit(
+                    np.array(self.arm_contexts[selected_arm][-999:]),
+                    np.array(self.arm_rewards[selected_arm][-999:])
+                )
 
-        # Plot cumulative reward
-        plt.subplot(1, 2, 1)
-        plt.plot(np.cumsum(self.optimal_reward) - np.cumsum(self.rewards[:len(self.optimal_reward)]), label='Cumulative regret')
-        plt.xlabel('Rounds')
-        plt.ylabel('Cumulative Reward')
-        plt.legend()
-        plt.title('Regret')
-
-        # Plot norms to check convergence
-        plt.subplot(1, 2, 2)
-        plt.plot(self.norms, label='||theta_hat - theta||_F')
-        plt.xlabel('Rounds')
-        plt.ylabel('Norm')
-        plt.legend()
-        plt.title('Convergence of Theta Estimates')
-
-        plt.show()
+            self.cum[selected_arm] += np.random.binomial(1, self.cost[selected_arm])
+            self.empirical_cost_means[selected_arm] = self.cum[selected_arm] / (self.arm_counts[selected_arm] + 1)
+            self.budget -= self.cost[selected_arm]
+            print(t)
+            t +=1
 
 
-# Parameters
-n = 2500
-k = 3
-n_a = 3
-contexts = np.random.random((n, k))
-true_theta = np.array([[0.5, 0.1, 0.2], [0.1, 0.5, 0.2], [0.2, 0.1, 0.5]])
-cost = np.array([0.8, 1, 0.6])
-alpha = 0.2
-budget = 1500
+def generate_true_cost(num_arms, method='uniform'):
+    """Erzeugt true_cost für die Banditen."""
+    if method == 'uniform':
+        return np.random.uniform(0.1, 1, num_arms)
+    elif method == 'beta':
+        return np.clip(np.random.beta(0.5, 0.5, num_arms), 0.01, 1)
 
-# Run the LinUCB algorithm
-#omega_ucb = OmegaUCB(n_actions=n_a, n_features=k, contexts=contexts, true_theta=true_theta, cost=cost, alpha=alpha,
-               # budget=budget)
-#omega_ucb.run()
-#omega_ucb.plot_results()
-#print(omega_ucb.theta_hat)
+
+np.random.seed(42)
+# Parameter
+n_arms = 3
+n_rounds = 10000000
+n_features = 3
+num_points = 150
+
+budget = 15000
+regret_ucb = np.zeros(10000000)
+p = [1]
+
+context = [np.random.uniform(0, 1, n_features) for i in range(n_rounds)]
+
+for i in range(1):
+    print(i)
+    cost = generate_true_cost(n_arms)
+    gpucb_bandit = GPUCB(n_arms, n_features, n_rounds,cost, context,budget, np.random.choice(p), i)
+    gpucb_bandit.run()
+    regret_ucb = np.add(regret_ucb[:len(gpucb_bandit.observed_rewards)], np.array(gpucb_bandit.opt_reward) - np.array(gpucb_bandit.observed_rewards))
+
+
+regret_ucb = np.array(regret_ucb)/10
+plt.subplot(122)
+plt.plot(regret_ucb.cumsum(), label='GP UCB')
+plt.title("Cumulative regret")
+plt.legend()
+plt.show()
+
