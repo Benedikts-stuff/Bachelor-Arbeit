@@ -55,7 +55,7 @@ class LinUCB:
             A_inv = np.linalg.inv(self.A[i])
             theta_hat = A_inv.dot(self.b[i])
             ta = context.dot(A_inv).dot(context)  # how informative is this?
-            a_upper_ci = (1 + np.sqrt(np.log(2 * (i + 1)) / 2)) * np.sqrt(ta)  # upper part of variance interval
+            a_upper_ci = (1 + np.sqrt(np.log(2 * (round + 1)) / 2)) * np.sqrt(ta)  # upper part of variance interval
 
             a_mean = theta_hat.dot(context)  # current estimate of mean
             p = a_mean + a_upper_ci

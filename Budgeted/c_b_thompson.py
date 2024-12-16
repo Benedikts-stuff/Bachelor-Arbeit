@@ -57,7 +57,7 @@ class ThompsonSamplingContextualBandit:
         """
         return self.contexts.dot(self.true_weights.T)
 
-    def sample_mu(self):
+    def sample_mu(self, round):
         """
         Samplet Schätzungen der Gewichte (mu) aus einer Multinormalverteilung.
         """
@@ -105,7 +105,7 @@ class ThompsonSamplingContextualBandit:
         i = 0
         while self.budget > self.max_cost:
             context = self.contexts[i]
-            sampled_mu = self.sample_mu()
+            sampled_mu = self.sample_mu(i)
             chosen_arm = self.select_arm(sampled_mu, context)
             actual_reward = np.dot(self.true_weights[chosen_arm], context)
 

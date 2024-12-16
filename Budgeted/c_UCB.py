@@ -55,7 +55,7 @@ class C_LinUCB:
             A_inv = np.linalg.inv(self.A[i])
             theta_hat = A_inv.dot(self.b[i])
             ta = context.dot(A_inv).dot(context)  # how informative is this?
-            a_upper_ci = (1 + np.sqrt(np.log(2 * (i + 1)) / 2)) * np.sqrt(ta)  # upper part of variance interval
+            a_upper_ci = (1 + np.sqrt(np.log(2 * (round + 1)) / 2)) * np.sqrt(ta)  # upper part of variance interval
 
             a_mean = theta_hat.dot(context)  # current estimate of mean
             p = a_mean + a_upper_ci
@@ -69,7 +69,7 @@ class C_LinUCB:
         Select the arm with the highest upper confidence bound, adjusted for cost.
         """
         upper = np.array(self.calculate_upper_confidence_bound(context, round))
-        lower = np.array(self.cost)
+        lower = np.array(self.empirical_cost_means)
         ratio = upper/(lower + 0.0000001)
         return np.argmax(ratio)
 

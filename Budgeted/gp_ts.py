@@ -136,7 +136,6 @@ class GPTS:
             self.logger.track_normalized_budget((self.og_budget - self.budget)/ self.og_budget)
             self.logger.track_spent_budget(self.og_budget - self.budget)
             self.logger.finalize_round()
-            print(t)
             t+=1
 
 

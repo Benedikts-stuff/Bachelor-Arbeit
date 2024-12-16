@@ -54,12 +54,14 @@ class ThompsonSamplingContextualBanditEmpiric:
         """
         return self.contexts.dot(self.true_weights.T)
 
-    def sample_mu(self):
+    def sample_mu(self, round):
         """
         Samplet Schätzungen der Gewichte (mu) aus einer Multinormalverteilung.
         """
+        #epsilon = 1/10
+        #alpha = np.sqrt((24/epsilon) *self.n_features * np.log(1/0.1))
         return np.array([
-            np.random.multivariate_normal(self.mu_hat[arm],  0.2**2 * np.linalg.inv(self.B[arm]))
+            np.random.multivariate_normal(self.mu_hat[arm], 0.5 * np.linalg.inv(self.B[arm]))
             for arm in range(self.n_arms)
         ])
 
@@ -69,7 +71,7 @@ class ThompsonSamplingContextualBanditEmpiric:
         Wählt den Arm mit dem höchsten erwarteten Belohnungs-Kosten-Verhältnis.
         """
         expected_rewards = np.array([np.dot(sampled_mu[arm], context) for arm in range(self.n_arms)])
-        return np.argmax(expected_rewards / (self.empirical_cost_means + self.gamma))
+        return np.argmax(expected_rewards / (self.empirical_cost_means+ 0.0000001))
 
     def calculate_optimal_reward(self, context):
         """
@@ -99,7 +101,7 @@ class ThompsonSamplingContextualBanditEmpiric:
         i = 0
         while self.budget > self.max_cost:
             context = self.contexts[i]
-            sampled_mu = self.sample_mu()
+            sampled_mu = self.sample_mu(i)
             chosen_arm = self.select_arm(sampled_mu, context)
             actual_reward = np.dot(self.true_weights[chosen_arm], context)
 
@@ -120,7 +122,8 @@ class ThompsonSamplingContextualBanditEmpiric:
             self.logger.finalize_round()
             i += 1
 
-        print('muHat TS', self.mu_hat)
+        print('muHat TS', self.mu_hat, "true mu", self.true_weights)
+        print('empirical cost', self.empirical_cost_means, 'true cost', self.cost)
 
 
 # Parameter festlegen

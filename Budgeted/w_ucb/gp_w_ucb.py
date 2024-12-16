@@ -31,11 +31,10 @@ class MyGPR(GaussianProcessRegressor):
 
 
 # Gaussian Process Modelle für jeden Arm mit mu_0 = 0 und sigma_0 = 1
-class GPUCB:
-    def __init__(self, n_arms, n_features, context, true_theta, cost, budget, gamma, repetition, logger, seed):
+class GPWUCB:
+    def __init__(self, n_arms, n_features, context, true_theta, cost, budget, p, repetition, logger, seed):
         np.random.seed(seed)
         self.n_arms = n_arms
-        self.gamma = gamma
         self.n_features = n_features
         self.beta_t = 1
         self.logger = logger
@@ -61,12 +60,39 @@ class GPUCB:
 
         self.context = context
         self.arm_counts = np.ones(self.n_arms)
-        self.B = 0.2 #max kernel norm
-        self.R = 1#function range
 
         #self.cost = [1, 1, 1]
         self.summed_regret = 0
+        self.p =p
 
+
+    def calculate_upper_confidence_bound(self, context, round):
+        """
+        Calculate the upper confidence bound for a given action and context.
+        """
+        upper =[]
+        for i in range(self.n_arms):
+            if len(self.arm_contexts[i]) > 0:
+                mu_r,sigma= self.gps[i].predict(context.reshape(1, -1), return_std=True)
+                #print(f"NeuralOmnegaUCB mu_r in round {round} and arm {i}", mu_r)
+                eta = 1
+                arm_count = self.arm_counts[i]
+                z = np.sqrt(2* self.p* np.log(round + 2))
+                if mu_r != 0 and mu_r != 1:
+                    eta = 1 #
+
+               # print('LOOOL', mu_r )
+                A = arm_count + z**2 * eta
+                B = 2*arm_count*mu_r + z**2 * eta # eig noch * (M-m) aber das ist hier gleich 1
+                C = arm_count* mu_r**2
+                x = np.sqrt(np.clip((B**2 / (4* A**2)) - (C/A), 0, None))
+                omega_r = np.clip((B/(2*A)) + x, 0, None)
+                upper.append(omega_r[0])
+            else:
+                ucb = np.array([np.inf])
+                upper.append(ucb[0])
+        # Adjust for cost and return estimated reward per cost ratio
+        return upper
 
     def calculate_lower_confidence_bound(self, round):
         """
@@ -74,9 +100,18 @@ class GPUCB:
         """
         lower = []
         for i in range(self.n_arms):
-            mean = self.empirical_cost_means[i]
-            lower_cb = np.sqrt(2*np.log(round + 1)/ (self.arm_counts[i] + 1))
-            lower.append(np.clip((mean-lower_cb), 0.000001, None))
+            mu_c = self.empirical_cost_means[i]
+
+            arm_count = self.arm_counts[i]
+            eta = 1
+            z = np.sqrt(2 * self.p * np.log(round + 2))
+
+            A = arm_count + z**2 * eta
+            B = 2 * arm_count * mu_c + z**2 * eta  # eig noch * (M-m) aber das ist hier gleich 1
+            C = arm_count * mu_c**2
+
+            omega_c = B / (2 * A) - np.sqrt((B ** 2 / (4 * A ** 2)) - C / A)
+            lower.append(np.clip(omega_c, 0.000001, None))
         # Adjust for cost and return estimated reward per cost ratio
         return lower
 
@@ -87,21 +122,11 @@ class GPUCB:
         progress = tqdm(total=100000, desc="Processing gp_ucb", unit="step",ncols=100, position=None)  # Fortschrittsbalken ohne Total
         while self.budget > np.max(self.cost):
             current_context = self.context[t]
-            ucb_values = []
-            for arm_id in range(self.n_arms):
-                if len(self.arm_contexts[arm_id]) > 0:
-                    mu, sigma = self.gps[arm_id].predict(current_context.reshape(1, -1), return_std=True)
-                    beta = 2 * np.log(self.arm_counts[arm_id] * (t**2) * np.pi**2 / (6 * self.gamma))
-                    #gain =  self.sigma_t_1[arm_id] - sigma
-                    #self.sigma_t_1[arm_id] = sigma
-                    #beta_t = self.compute_beta_t(gain)
-                    ucb = mu + (np.sqrt(beta/5) * sigma)
-                else:
-                    ucb = np.array([np.inf])
-                ucb_values.append(ucb[0])
 
-            lower = self.calculate_lower_confidence_bound(t)
-            selected_arm = np.argmax(ucb_values/(np.array(lower)+0.000001))
+            upper = np.array(self.calculate_upper_confidence_bound(current_context, t))
+            lower = np.array(self.calculate_lower_confidence_bound(t))
+
+            selected_arm = np.argmax(upper/(lower))
 
             self.budget -= self.cost[selected_arm]
             self.cum[selected_arm] += np.random.binomial(1, self.cost[selected_arm])

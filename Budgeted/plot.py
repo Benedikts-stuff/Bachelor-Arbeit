@@ -1,10 +1,7 @@
 import numpy as np
 from matplotlib import pyplot as plt
 
-from Budgeted.c_b_thompson import ThompsonSamplingContextualBandit
-from Budgeted.olr_e_greedy import EpsilonGreedyContextualBandit
-from Budgeted.lin_ucb import LinUCB
-from Budgeted.w_ucb import OmegaUCB
+from Budgeted.w_ucb.w_ucb import OmegaUCB
 
 # Set parameters
 num_arms = 3
