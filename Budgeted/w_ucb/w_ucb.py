@@ -1,5 +1,6 @@
 import numpy as np
 from matplotlib import pyplot as plt
+import json
 
 
 class OmegaUCB:
@@ -45,6 +46,8 @@ class OmegaUCB:
         self.optimal_reward = []
         self.norms = np.zeros(len(contexts))
 
+        self.plot_data = [[] for _ in range(self.n_actions)]
+
 
     def calculate_upper_confidence_bound(self, context, round):
         """
@@ -70,7 +73,7 @@ class OmegaUCB:
             x = np.sqrt((B**2 / (4* A**2)) - (C/A))
             omega_r = (B/(2*A)) + x
             upper.append(omega_r)
-
+            self.plot_data[i].append([omega_r, x])
         # Adjust for cost and return estimated reward per cost ratio
         return upper
 
@@ -157,6 +160,9 @@ class OmegaUCB:
             self.logger.finalize_round()
             i += 1
         print('finish lin w ucb')
+        # Liste in einer Datei speichern
+        with open('../testing/plot_data.json', 'w') as file:
+            json.dump(self.plot_data, file)
 
     def plot_results(self):
         """

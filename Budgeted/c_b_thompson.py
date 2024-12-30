@@ -7,7 +7,7 @@ np.random.seed(42)
 #Mit Beta verteilung wie im budgeted Thompson ansatz
 
 class ThompsonSamplingContextualBandit:
-    def __init__(self, d, v, n_arms, contexts, true_weights, cost, budget, logger, repetition, seed):
+    def __init__(self, d, v, n_arms, contexts, true_weights, cost, budget, logger, repetition, seed, cost_kind):
         """
         d: Dimension der Kontextvektoren
         v: Varianzparameter für die Normalverteilung
@@ -33,6 +33,7 @@ class ThompsonSamplingContextualBandit:
         self.arm_counts = np.zeros(self.n_arms)
         self.gamma = 0.00000001
         self.cum = np.zeros(self.n_arms)
+        self.cost_kind = cost_kind
 
         self.empirical_cost_means = np.random.rand(self.n_arms)
         self.summed_regret = 0

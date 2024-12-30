@@ -4,7 +4,7 @@ from matplotlib import pyplot as plt
 
 
 class LinUCB:
-    def __init__(self, n_actions, n_features, contexts, true_theta, cost, budget, logger, repetition, seed):
+    def __init__(self, n_actions, n_features, contexts, true_theta, cost, budget, logger, repetition, seed, cost_kind):
         """
         Initialize the LinUCB instance with parameters.
 
@@ -30,6 +30,7 @@ class LinUCB:
         self.cum = np.zeros(self.n_actions)
         self.arm_counts = np.zeros(self.n_actions)
         self.gamma = 0.00000001
+        self.cost_kind = cost_kind
 
         self.empirical_cost_means = np.random.rand(self.n_actions)
         self.repetition = repetition
@@ -70,7 +71,11 @@ class LinUCB:
         """
         lower = []
         for i in range(self.n_actions):
-            mean = self.empirical_cost_means[i]
+            if self.cost_kind == 'bernoulli':
+                mean = self.empirical_cost_means[i]
+            else:
+                mean = self.cost[i]  # np.random.normal(self.cost[i], 0.0001)
+
             lower_cb = np.sqrt(2*np.log(round + 1)/ (self.arm_counts[i] + 1))
             lower.append(np.clip((mean-lower_cb), 0.000001, None))
         # Adjust for cost and return estimated reward per cost ratio

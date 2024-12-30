@@ -6,7 +6,7 @@ np.random.seed(42)
 
 
 class ThompsonSamplingContextualBanditEmpiric:
-    def __init__(self, d, v, n_arms, contexts, true_weights, cost, budget, logger, repetition, seed):
+    def __init__(self, d, v, n_arms, contexts, true_weights, cost, budget, logger, repetition, seed, cost_kind):
         """
         d: Dimension der Kontextvektoren
         v: Varianzparameter für die Normalverteilung
@@ -32,6 +32,7 @@ class ThompsonSamplingContextualBanditEmpiric:
         self.arm_counts = np.zeros(self.n_arms)
         self.gamma = 0.00000001
         self.cum = np.zeros(self.n_arms)
+        self.cost_kind = cost_kind
 
         self.empirical_cost_means = np.random.rand(self.n_arms)
         self.summed_regret = 0
@@ -71,7 +72,11 @@ class ThompsonSamplingContextualBanditEmpiric:
         Wählt den Arm mit dem höchsten erwarteten Belohnungs-Kosten-Verhältnis.
         """
         expected_rewards = np.array([np.dot(sampled_mu[arm], context) for arm in range(self.n_arms)])
-        return np.argmax(expected_rewards / (self.empirical_cost_means+ 0.0000001))
+        if self.cost_kind == 'bernoulli':
+            cost = self.empirical_cost_means
+        else:
+            cost = self.cost  # np.random.normal(self.cost[i], 0.0001)
+        return np.argmax(expected_rewards / (cost + 0.0000001))
 
     def calculate_optimal_reward(self, context):
         """

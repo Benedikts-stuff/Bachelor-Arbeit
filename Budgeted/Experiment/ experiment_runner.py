@@ -50,9 +50,9 @@ algorithms= [
 
 # Runner-Klasse
 class Runner:
-    def __init__(self, n_rounds, reward_type,cdc,cost_type,  num_arms=3, num_features=3, budget=1000):
+    def __init__(self, n_rounds, reward_typ,c,cost_type,cost_index,  num_arms=3, num_features=3, budget=1000):
         self.iterations = n_rounds
-        self.cdc = cdc
+        self.cdc = c
         self.cost_type = cost_type
         self.num_arms = num_arms
         self.num_features = num_features
@@ -61,30 +61,33 @@ class Runner:
         self.budget = budget
         self.normalized_budget_points = np.linspace(0, 1, 100)
         self.epsilon = np.array([4]) #np.array([0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7])
-        self.p =np.array([0.95])
+        self.p =np.array([0.25]) #oder 1 wählen
         self.gamma= np.array([0.1])
         self.cost_kind = ['continuous', 'bernoulli']
-        self.reward_type = reward_type
+        self.cost_index =cost_index
+        self.reward_type = reward_typ
 
     def run_experiment(self):
-        all_data = {name: [] for name in ['LinOmegaUCB'] } #['C-UCB', 'C-ThompsonSampling', 'OmegaUCB','NeuralOmegaUCB', 'LinUCB', 'EpsilonGreedy', 'ThompsonSampling', 'GPUCB', 'GPTS']}   #{name: [] for name in ['EpsilonGreedy', 'ThompsonSampling', 'LinUCB', 'OmegaUCB']}
+        all_data = {name: [] for name in ['LinOmegaUCB']} #['C-UCB', 'C-ThompsonSampling', 'OmegaUCB','NeuralOmegaUCB', 'LinUCB', 'EpsilonGreedy', 'ThompsonSampling', 'GPUCB', 'GPTS']}   #{name: [] for name in ['EpsilonGreedy', 'ThompsonSampling', 'LinUCB', 'OmegaUCB']}
         #['LinOmegaUCB','NeuralOmegaUCB', 'LinUCB', 'GPUCB', 'GPTS']
         #['GPWUCB','C-LinUCB', 'LinOmegaUCB','NeuralOmegaUCB', 'LinUCB', 'GPUCB']
         #[ 'C-LinearThompsonSampling', 'EpsilonGreedy', 'LinearThompsonSampling', 'GPTS']
         #['C-LinearThompsonSampling', 'LinearEpsilonGreedy', 'LinearThompsonSampling', 'LinOmegaUCB', 'C-LinUCB', 'LinUCB' ]
         # ['GPWUCB', 'NeuralOmegaUCB', 'GPUCB', 'GPTS']
-        with ProcessPoolExecutor(max_workers=6) as executor:
+        # ['LinUCB_CDC', 'NeuralOmegaUCB_CDC',  'LinearEpsilonGreedy_CDC', 'LinOmegaUCB_CDC' ]
+        #['C-LinearThompsonSampling', 'LinearEpsilonGreedy', 'LinearThompsonSampling', 'LinOmegaUCB', 'C-LinUCB', 'LinUCB', 'RandomBandit']
+        with ProcessPoolExecutor(max_workers=7) as executor:
             futures = []
 
             if __name__ == '__main__':
                 for i in tqdm(range(self.iterations), desc="Running Bandit Experiments"):
                     true_weights = generate_true_weights(self.num_arms, self.num_features, seed=i)
-                    true_cost_weights = generate_true_weights(self.num_arms, self.num_features, seed=i)
-                    true_cost = generate_true_cost(self.num_arms)
+                    true_cost_weights = generate_true_weights(self.num_arms, self.num_features,seed=i)
+                    true_cost = generate_true_cost(self.num_arms, self.cdc)
 
                     for bandit_type in all_data.keys():
                         futures.append(
-                            executor.submit(self.run_bandit, bandit_type, true_weights, true_cost, i, true_cost_weights, self.cost_kind[1], self.reward_type)
+                            executor.submit(self.run_bandit, bandit_type, true_weights, true_cost, i, true_cost_weights, self.cost_kind[self.cost_index], self.reward_type)
                         )
 
             for future in tqdm(as_completed(futures), total=len(futures), desc="Processing Futures"):
@@ -97,17 +100,23 @@ class Runner:
 
     def run_bandit(self, bandit_type, true_weights, true_cost, seed, true_cost_weights, cost_kind, reward_type):
         np.random.seed(seed)
-        if reward_type == 'linear':
-            bandit = BanditFactory.create(bandit_type, self, true_weights, true_cost, seed, true_cost_weights, cost_kind, linear_reward)
+        bandit = None
+        if self.cdc:
+            if reward_type == 'linear' and self.cost_type == 'linear':
+                bandit = BanditFactory.create(bandit_type, self, true_weights, true_cost, seed, true_cost_weights, cost_kind, linear_reward, linear_cost)
+            elif reward_type == 'polynomial' and self.cost_type == 'linear':
+                bandit = BanditFactory.create(bandit_type, self, true_weights, true_cost, seed, true_cost_weights,
+                                              cost_kind, polynomial_reward, linear_cost)
+            elif reward_type == 'linear' and self.cost_type == 'polynomial':
+                bandit = BanditFactory.create(bandit_type, self, true_weights, true_cost, seed, true_cost_weights,
+                                              cost_kind, linear_reward, polynomial_cost)
+            elif reward_type == 'polynomial' and self.cost_type == 'polynomial':
+                bandit = BanditFactory.create(bandit_type, self, true_weights, true_cost, seed, true_cost_weights,
+                                              cost_kind, polynomial_reward, polynomial_cost)
+
         else:
             bandit = BanditFactory.create(bandit_type, self, true_weights, true_cost, seed, true_cost_weights,
-                                          cost_kind, polynomial_reward)
-
-        if self.cdc:
-            if self.cost_type == 'linear':
-                bandit.set_cost_fn(linear_cost)
-            else:
-                bandit.set_cost_function(polynomial_cost)
+                                          cost_kind)
 
         bandit.run()
         return bandit_type, bandit.logger.get_dataframe()
@@ -134,7 +143,11 @@ class Runner:
             'GPTS': ('#e377c2', '-.'),  # Rosa (gepunktet-gestrichelt)
             'C-LinUCB': ('#7f7f7f', ':'),  # Grau (gepunktet)
             'C-LinearThompsonSampling': ('#bcbd22', '--'),  # Gelbgrün (gestrichelt)
-            'LinOmegaUCB_CDC': ('#bcbd22', '--')  # Gelbgrün (gestrichelt)
+            'LinOmegaUCB_CDC': ('#bcbd22', '--'),  # Gelbgrün (gestrichelt)
+            'LinearEpsilonGreedy_CDC': ('#1f77b4', '-'),  # Blau (durchgehend)
+            'RandomBandit': ('#2ca02c', '-.'),  # Grün (gepunktet-gestrichelt)
+            'LinUCB_CDC': ('#8c564b', '--'),  # Braun (gestrichelt)
+            'NeuralOmegaUCB_CDC': ('#bcbd22', ':')
         }
 
         y_lim = 0
@@ -158,7 +171,7 @@ class Runner:
 # Starte dasd Experiment
 reward_type = ['linear', 'nonlinear']
 cdc = False #context dependent cost
-runner = Runner(30,reward_type[0], cdc, reward_type[0])
+runner = Runner(1,reward_type[0], cdc, reward_type[0], 0)
 start_time = time.time()  # Startzeitpunkt
 runner.run_experiment()
 end_time = time.time()  # Endzeitpunkt

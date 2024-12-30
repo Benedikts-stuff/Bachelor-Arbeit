@@ -32,7 +32,7 @@ class MyGPR(GaussianProcessRegressor):
 
 # Gaussian Process Modelle für jeden Arm mit mu_0 = 0 und sigma_0 = 1
 class GPWUCB:
-    def __init__(self, n_arms, n_features, context, true_theta, cost, budget, p, repetition, logger, seed):
+    def __init__(self, n_arms, n_features, context, true_theta, cost, budget, p, repetition, logger, seed, cost_kind):
         np.random.seed(seed)
         self.n_arms = n_arms
         self.n_features = n_features
@@ -45,6 +45,7 @@ class GPWUCB:
         self.repetition = repetition
         self.empirical_cost_means = np.random.rand(self.n_arms)
         self.cum = np.zeros(self.n_arms)
+        self.cost_kind = cost_kind
 
         self.kernels = [RBF(length_scale=0.2, length_scale_bounds=(1e-60, 10)) for _ in range(n_arms)]
         self.gps = [
@@ -100,7 +101,10 @@ class GPWUCB:
         """
         lower = []
         for i in range(self.n_arms):
-            mu_c = self.empirical_cost_means[i]
+            if self.cost_kind == 'bernoulli':
+                mu_c = self.empirical_cost_means[i]
+            else:
+                mu_c = self.cost[i]#np.random.normal(self.cost[i], 0.0001)
 
             arm_count = self.arm_counts[i]
             eta = 1

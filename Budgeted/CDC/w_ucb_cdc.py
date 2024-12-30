@@ -2,7 +2,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 class OmegaUCB_CDC:
-    def __init__(self, n_actions, n_features, contexts, true_theta, cost, budget, repetition, logger, seed, p, cost_weight, reward_fn):
+    def __init__(self, n_actions, n_features, contexts, true_theta, cost, budget, repetition, logger, seed, p, cost_weight, cost_fn, reward_fn):
         """
         Initialize the OmegaUCB_CDC instance with parameters.
         logger should be None by default.
@@ -33,7 +33,7 @@ class OmegaUCB_CDC:
         self.cost_weight = cost_weight
 
         self.reward_fn = reward_fn
-        self.cost_fn = None
+        self.cost_fn = cost_fn
 
         # Initialize variables
         self.A = np.array([np.identity(n_features) for _ in range(n_actions)])  # Covariance matrices for each arm
@@ -51,8 +51,9 @@ class OmegaUCB_CDC:
         self.costs_c = np.zeros(len(contexts))
         self.optimal_costs = []
 
-    def set_cost_fn(self, func):
-        self.cost_fn = func
+
+
+
 
     def calculate_upper_confidence_bound(self, context, round):
         """
@@ -118,10 +119,12 @@ class OmegaUCB_CDC:
         self.A[chosen_arm] += np.outer(context, context)
         self.b[chosen_arm] += actual_reward * context
         self.theta_hat[chosen_arm] = np.linalg.inv(self.A[chosen_arm]).dot(self.b[chosen_arm])
-        print("true theta: ", self.true_theta, " theta hat :", self.theta_hat)
+
+
         self.A_c[chosen_arm] += np.outer(context, context)
         self.b_c[chosen_arm] += actual_cost * context
         self.theta_hat_c[chosen_arm] = np.linalg.inv(self.A_c[chosen_arm]).dot(self.b_c[chosen_arm])
+
 
         self.cum[chosen_arm] += np.random.binomial(1, np.clip(actual_cost, 0, 1))
         self.empirical_cost_means[chosen_arm] = self.cum[chosen_arm] / (self.arm_counts[chosen_arm] + 1)
@@ -138,8 +141,8 @@ class OmegaUCB_CDC:
             self.arm_counts[chosen_arm] += 1
 
             # Calculate reward and optimal reward using modular reward and cost functions
-            actual_costs = np.array(self.cost_fn(context, self.cost_weight)) + np.random.normal(0, 0.0001, self.n_actions)
-            actual_reward = np.array(self.reward_fn(context, self.true_theta)) + np.random.normal(0, 0.0001, self.n_actions)
+            actual_costs = np.array(self.cost_fn(context, self.cost_weight)) #+ np.random.normal(0, 0.0001, self.n_actions)
+            actual_reward = np.array(self.reward_fn(context, self.true_theta)) # + np.random.normal(0, 0.0001, self.n_actions)
 
             optimal_arm = np.argmax(actual_reward /actual_costs)
 
@@ -163,20 +166,4 @@ class OmegaUCB_CDC:
 
             i += 1
         print('Finished OmegaUCB')
-
-    def plot_results(self):
-        """
-        Plot the results showing the cumulative reward and convergence of norms.
-        """
-        plt.figure(figsize=(14, 6))
-
-        # Plot cumulative reward
-        plt.subplot(1, 2, 1)
-        plt.plot(np.cumsum(self.optimal_reward) - np.cumsum(self.rewards[:len(self.optimal_reward)]), label='Cumulative regret')
-        plt.xlabel('Rounds')
-        plt.ylabel('Cumulative Reward')
-        plt.legend()
-        plt.title('Regret')
-
-        plt.show()
 

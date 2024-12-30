@@ -23,8 +23,8 @@ class SingleArmNetwork(nn.Module):
 
 
 
-class NeuralOmegaUCB:
-    def __init__(self, n_actions, n_features, contexts, true_theta, cost, budget, repetition, logger, seed, p, cost_kind):
+class NeuralOmegaUCB_CDC:
+    def __init__(self, n_actions, n_features, contexts, true_theta, cost, budget, repetition, logger, seed, p, cost_kind, reward_func, cost_theta, cost_func):
         """
         Initialize the LinUCB instance with parameters.
         logger sollte None defaulted sein
@@ -48,6 +48,10 @@ class NeuralOmegaUCB:
         self.arm_counts = np.zeros(self.n_actions)
         self.gamma = 0.00000001
         self.cost_kind = cost_kind
+        self.reward_func = reward_func
+
+        self.cost_theta = cost_theta
+        self.cost_func = cost_func
 
         self.empirical_cost_means = np.random.rand(self.n_actions)
         self.z = 1
@@ -62,11 +66,17 @@ class NeuralOmegaUCB:
         self.optimizer = [optim.Adam(model.parameters(), lr=0.001) for model in self.models]
         self.criterion = nn.MSELoss()
 
+        # models for cost
+        self.models_c = [SingleArmNetwork(n_features) for _ in range(n_actions)]
+        self.optimizer_c = [optim.Adam(model.parameters(), lr=0.001) for model in self.models_c]
+        self.criterion_c = nn.MSELoss()
+
         self.rewards = np.zeros(len(contexts))
         self.optimal_reward = []
 
         self.contexts_seen = [[] for _ in range(n_actions)]
         self.rewards_seen =[[] for _ in range(n_actions)]
+        self.costs_seen = [[] for _ in range(n_actions)]
 
 
     def calculate_upper_confidence_bound(self, context, round):
@@ -97,16 +107,16 @@ class NeuralOmegaUCB:
         # Adjust for cost and return estimated reward per cost ratio
         return upper
 
-    def calculate_lower_confidence_bound(self, round):
+    def calculate_lower_confidence_bound(self, context,round):
         """
         Calculate the upper confidence bound for a given action and context.
         """
+        context_tensor = torch.FloatTensor(context).unsqueeze(0)
+        context_tensor.requires_grad = True
+        output = [self.models_c[t](context_tensor).squeeze(0) for t in range(self.n_actions)]
         lower = []
-        for i in range(self.n_actions):
-            if self.cost_kind == 'bernoulli':
-                mu_c = self.empirical_cost_means[i]
-            else:
-                mu_c = self.cost[i]  # np.random.normal(self.cost[i], 0.0001)
+        for i, cost in enumerate(output):
+            mu_c = cost.item()
 
             arm_count = self.arm_counts[i]
             eta = 1
@@ -126,7 +136,7 @@ class NeuralOmegaUCB:
         Select the arm with the highest upper confidence bound, adjusted for cost.
         """
         upper = np.array(self.calculate_upper_confidence_bound(context, round))
-        lower = np.array(self.calculate_lower_confidence_bound(round))
+        lower = np.array(self.calculate_lower_confidence_bound(context, round))
         ratio = upper/lower
         return np.argmax(ratio)
 
@@ -135,8 +145,8 @@ class NeuralOmegaUCB:
         Update the parameters for the chosen arm based on observed context and reward.
         """
         batch_size = len(contexts)
-        if len(contexts) >= 32:
-            batch_size = 32
+        if len(contexts) >= 20:
+            batch_size = 20
 
         dataset = TensorDataset(torch.FloatTensor(contexts),
                                 torch.FloatTensor(rewards))
@@ -156,42 +166,72 @@ class NeuralOmegaUCB:
             loss.backward()
             optimizer.step()
 
+    def update_parameters_cost(self, action, contexts, cost):
+        """
+        Update the parameters for the chosen arm based on observed context and reward.
+        """
+        batch_size = len(contexts)
+        if len(contexts) >= 20:
+            batch_size = 20
+
+        dataset = TensorDataset(torch.FloatTensor(contexts),
+                                torch.FloatTensor(cost))
+        dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+
+        model = self.models_c[action]
+        optimizer = self.optimizer_c[action]
+
+        # context_tensor = torch.FloatTensor(contexts).unsqueeze(0)
+        # reward_tensor = torch.FloatTensor([rewards])
+
+        model.train()
+        for batch, cost in dataloader:
+            optimizer.zero_grad()
+            predicted_reward = model(batch).squeeze()
+            loss = self.criterion_c(predicted_reward, cost)
+            loss.backward()
+            optimizer.step()
+
 
     def run(self):
         """
         Run the LINUCB algorithm over all rounds within the given budget.
         """
         # Calculate true rewards based on context and true_theta
-        true_rewards = self.contexts.dot(self.true_theta.T)
         i = 0
         progress = tqdm(total=100000, desc="Processing neural_w_ucb", unit="step", ncols=100, position=None)  # Fortschrittsbalken ohne Total
         while self.budget > np.max(self.cost):
             context = self.contexts[i]
+            true_rewards = self.reward_func(context, self.true_theta)
+            cost = self.cost_func(context, self.cost_theta)
             chosen_arm = self.select_arm(context, i)
             self.arm_counts[chosen_arm] += 1
 
             # Calculate reward and optimal reward
-            actual_reward = true_rewards[i, chosen_arm] / self.cost[chosen_arm]
+            actual_reward = true_rewards[chosen_arm] / cost[chosen_arm]
             #print(f"mean rweward OmegaUCB chosen arm in runde {i} und arm {chosen_arm}", true_rewards[i, chosen_arm])
-            optimal_arm = np.argmax(true_rewards[i] / self.cost)
+            optimal_arm = np.argmax(true_rewards / cost)
 
             # Update rewards and norms
             self.rewards[i] = actual_reward
-            opt_rew = true_rewards[i, optimal_arm] / self.cost[optimal_arm]
+            opt_rew = true_rewards[optimal_arm] / cost[optimal_arm]
             self.optimal_reward.append(opt_rew)
 
             # update buffer
             self.contexts_seen[chosen_arm].append(context)
-            self.rewards_seen[chosen_arm].append(true_rewards[i, chosen_arm])
+            self.rewards_seen[chosen_arm].append(true_rewards[chosen_arm])
+            self.costs_seen[chosen_arm].append(cost[chosen_arm])
 
             # Update parameters for the chosen arm
-            if i < 1000:
+            if i < 3000:
                 self.update_parameters(chosen_arm, self.contexts_seen[chosen_arm], self.rewards_seen[chosen_arm])
+                self.update_parameters_cost(chosen_arm, self.contexts_seen[chosen_arm], self.costs_seen[chosen_arm])
+
 
             self.cum[chosen_arm] += np.random.binomial(1, self.cost[chosen_arm])
             self.empirical_cost_means[chosen_arm] = self.cum[chosen_arm] / (self.arm_counts[chosen_arm] + 1)
 
-            self.budget -= self.cost[chosen_arm]
+            self.budget -= cost[chosen_arm]
             self.summed_regret += opt_rew - actual_reward
 
             self.logger.track_rep(self.repetition)
@@ -206,40 +246,3 @@ class NeuralOmegaUCB:
 
         progress.close()
         print('finish neural wucb')
-
-    def plot_results(self):
-        """
-        Plot the results showing the cumulative reward and convergence of norms.
-        """
-        plt.figure(figsize=(14, 6))
-
-        # Plot cumulative reward
-        plt.subplot(1, 2, 1)
-        plt.plot(np.cumsum(self.optimal_reward) - np.cumsum(self.rewards[:len(self.optimal_reward)]), label='Cumulative regret')
-        plt.xlabel('Rounds')
-        plt.ylabel('Cumulative Reward')
-        plt.legend()
-        plt.title('Regret')
-
-        plt.show()
-
-
-
-# Parameters
-n = 25000
-k = 3
-n_a = 3
-contexts = np.random.random((n, k))
-true_theta = np.array([[0.5, 0.1, 0.2], [0.1, 0.5, 0.2], [0.2, 0.1, 0.5]])
-cost = np.array([1, 1, 1])
-alpha = 0.2
-budget = 5000
-seed = 0
-p = 0.95
-
-# Run the LinUCB algorithm
-#omega_ucb = NeuralOmegaUCB(n_actions=n_a, n_features=k, contexts=contexts, true_theta=true_theta, cost=cost, budget=budget,repetition=seed ,seed=seed,
- #             p= p)
-#omega_ucb.run()
-#omega_ucb.plot_results()
-#print(omega_ucb.theta_hat)

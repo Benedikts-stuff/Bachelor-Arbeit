@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 
 
 class EpsilonGreedyContextualBandit:
-    def __init__(self, d, epsilon,  n_arms, contexts, true_weights, true_cost, budget, logger, repetition, seed=0):
+    def __init__(self, d, epsilon,  n_arms, contexts, true_weights, true_cost, budget, logger, repetition, seed, cost_kind):
         """
         d: Dimension der Kontextvektoren
         epsilon: Wahrscheinlichkeit für Exploration
@@ -35,6 +35,7 @@ class EpsilonGreedyContextualBandit:
         self.actual_reward_history = self.contexts.dot(self.true_weights.T)
         self.optimal_reward = []
         self.summed_regret = 0
+        self.cost_kind = cost_kind
 
     def select_arm(self, context):
         epsilon = min(1, self.epsilon * (self.n_arms/(self.i +1)))
@@ -43,7 +44,11 @@ class EpsilonGreedyContextualBandit:
             return np.random.choice(self.n_arms)  # Exploration
         else:
             expected_rewards = np.array([np.dot(self.mu_hat[i], context) for i in range(self.n_arms)])
-            return np.argmax(expected_rewards / (self.empirical_cost_means + self.gamma))  # Exploitation
+            if self.cost_kind == 'bernoulli':
+                cost = self.empirical_cost_means
+            else:
+                cost = self.costs #np.random.normal(self.cost[i], 0.0001)
+            return np.argmax(expected_rewards / (cost + self.gamma))  # Exploitation
 
     def update(self, reward, chosen_arm, context):
         self.B[chosen_arm] += np.outer(context, context)
