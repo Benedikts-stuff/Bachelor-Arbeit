@@ -9,6 +9,7 @@ REP = "rep"
 ROUND = r"$t$"
 BEST_ARM = "best-arm"
 APPROACH = "Approach"
+ALPHA= "alpha"
 TIME = "time"
 K = r"$K$"
 CURRENT_ARM = r"$I_t$"
@@ -38,6 +39,7 @@ all_ids = [
     REP,
     ROUND,
     APPROACH,
+    ALPHA,
 #    BEST_ARM,
 #    CURRENT_ARM,
 #    OPTIMAL_TOTAL_REWARD,
@@ -107,6 +109,9 @@ class BanditLogger:
 
     def track_spent_budget(self, value: float):
         self._track_value(value, SPENT_BUDGET)
+
+    def track_alpha(self, value: float):
+        self._track_value(value, ALPHA)
 
     def finalize_round(self):
         """

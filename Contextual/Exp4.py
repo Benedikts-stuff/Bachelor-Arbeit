@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 # Lade die Daten
-data_path = '../facebook-ad-campaign-data.csv'
+data_path = '../Budgeted/Experiment/data/facebook-ad-campaign-data.csv'
 ad_data = pd.read_csv(data_path)
 
 # Gruppiere nach Anzeigen (campaign_id)

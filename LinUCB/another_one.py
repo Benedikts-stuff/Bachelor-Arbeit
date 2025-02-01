@@ -51,7 +51,7 @@ def preprocess_features(df):
 
 
 # Daten laden
-df = pd.read_csv('../facebook-ad-campaign-data.csv')
+df = pd.read_csv('../Budgeted/Experiment/data/facebook-ad-campaign-data.csv')
 
 # Features und Rewards vorbereiten
 features = preprocess_features(df)

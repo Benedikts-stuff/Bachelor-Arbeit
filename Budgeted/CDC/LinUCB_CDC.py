@@ -4,7 +4,7 @@ from matplotlib import pyplot as plt
 
 
 class LinUCB_CDC:
-    def __init__(self, n_actions, n_features, contexts, true_theta, cost, budget, logger, repetition, seed,  true_cost_weights, cost_func, reward_func,):
+    def __init__(self, n_actions, n_features, contexts, true_theta, cost, budget, logger, repetition, seed,  true_cost_weights, cost_func, reward_func):
         """
         Initialize the LinUCB instance with parameters.
 
@@ -135,15 +135,14 @@ class LinUCB_CDC:
         """
         # Calculate true rewards based on context and true_theta
         i = 0
-        c = 0
         while self.budget > np.max(self.cost):
             context = self.contexts[i]
             chosen_arm = self.select_arm(context, i)
             self.arm_counts[chosen_arm] += 1
 
             # Calculate reward and optimal reward
-            true_rewards = self.reward_func(context, self.true_theta)
-            true_cost = self.cost_func(context, self.cost_theta)
+            true_rewards = self.reward_func(context, self.true_theta, i)
+            true_cost = self.cost_func(context, self.cost_theta, i)
             actual_reward = true_rewards[chosen_arm] / true_cost[chosen_arm]
 
             optimal_arm = np.argmax(true_rewards / true_cost)

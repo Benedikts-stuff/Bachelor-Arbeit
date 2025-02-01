@@ -1,7 +1,6 @@
-
 import numpy as np
 from matplotlib import pyplot as plt
-
+import seaborn as sns
 from tempp import Get_linear_model
 
 sampler = Get_linear_model(1)
@@ -92,24 +91,17 @@ for i in range(0, n):
 
 
 
-plt.figure(1, figsize=(10, 5))
-plt.subplot(121)
-plt.plot(norms)
-plt.title("Frobeninus norm of estimated theta vs actual")
-plt.show()
+# Plot Frobenius Norm
+sns.set(style="whitegrid", context="talk")
+plt.rcParams['text.usetex'] = True
+plt.rcParams['font.family'] = 'sourcesanspro'
+plt.rcParams['text.latex.preamble'] = r'\usepackage{libertine}\usepackage[libertine]{newtxmath}\RequirePackage[scaled=.92]{sourcesanspro}'
 
-regret = (P.max(axis=1) - rewards)
-plt.subplot(122)
-plt.plot(regret.cumsum(), label='linear model')
-plt.title("Cumulative regret")
+plt.figure(figsize=(12, 6))
+sns.lineplot(x=range(len(norms)), y=norms, color="b", label=r'Frobenius Norm')
+
+plt.xlabel(r'Iterations')
+plt.ylabel(r'Frobenius Norm')
 plt.legend()
-plt.show()
-
-asdsd = rewards.cumsum()
-print('cumu reward',asdsd[n-1])
-
-plt.subplot(122)
-plt.plot(rewards.cumsum(), label= 'linear_model')
-plt.title("Cumulative reward")
-plt.legend()
+plt.savefig('Frobenius_plot.pdf', format='pdf')  # Vektorgrafik im SVG-Format
 plt.show()

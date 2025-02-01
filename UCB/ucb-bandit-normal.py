@@ -31,7 +31,7 @@ class UCB_Bandit:
 
 
 # Lade die Daten
-data_path = '../facebook-ad-campaign-data.csv'
+data_path = '../Budgeted/Experiment/data/facebook-ad-campaign-data.csv'
 ad_data = pd.read_csv(data_path)
 ad_data['click_rate'] = (ad_data['clicks'] / ad_data['impressions']) *1000
 # Gruppiere nach Anzeigen (campaign_id)

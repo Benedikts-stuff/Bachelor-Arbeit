@@ -49,7 +49,7 @@ def CoFineUCB(D,N, lambda_fine, lambda_coarse, T, arms, theta):
     W = np.random.uniform(0, 1, (D,N))  # D: number of items, N: number of users
     # im prizip habe ich hier den schritt des lernens der existierenden Nutzerprofile übergsprungen da ich direkt davon ausgehe das ich alle Profile kenne.
     # Eigentlich müsste der algorithmus nach und nach daten sammeln und mit einer metrik bestimmen welche Profile es gibt basierend auf seinen  beaobachtungen
-    K = int(np.floor(D))  # Dimensionality of the latent space
+    K = int(np.floor(D * 0.2))  # Dimensionality of the latent space
     U = learnU(W,K)
     Xt = [[] for arm in range(arms)] # action history with weights of actions as elements
 
@@ -144,7 +144,7 @@ D = 100
 N = 200
 lambda_fine = 1
 lambda_coarse = 1
-T = 10000
+T = 1000
 arms = 5
 theta = np.random.uniform(0, 1, (5,100))
 

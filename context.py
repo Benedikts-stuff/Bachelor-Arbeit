@@ -5,7 +5,7 @@ import seaborn as sns
 from sklearn.preprocessing import OneHotEncoder
 
 # Daten laden
-df = pd.read_csv('./facebook-ad-campaign-data.csv')
+df = pd.read_csv('Budgeted/Experiment/data/facebook-ad-campaign-data.csv')
 # Überprüfen der Werte in den Spalten 'age' und 'gender'
 #print(df[['age', 'gender']].head())
 # Berechne die CTR für jede Kombination von Kontextmerkmalen

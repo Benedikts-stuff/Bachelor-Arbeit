@@ -5,8 +5,8 @@ import matplotlib.pyplot as plt
 
 
 
-class EpsilonGreedyContextualBandit:
-    def __init__(self, d, epsilon,  n_arms, contexts, true_weights, true_cost, budget, logger, repetition, seed, cost_kind, alpha = 11):
+class EpsilonGreedyContextualBandit2:
+    def __init__(self, d, epsilon,  n_arms, contexts, true_weights, true_cost, budget, logger, repetition, seed, cost_kind,alpha = 85):
         """
         d: Dimension der Kontextvektoren
         epsilon: Wahrscheinlichkeit für Exploration
@@ -15,7 +15,7 @@ class EpsilonGreedyContextualBandit:
         self.repetition = repetition
         self.logger = logger
         self.n_features = d
-        self.epsilon = 3
+        self.epsilon = 4
         self.n_arms = n_arms
         self.B = np.array([np.identity(self.n_features) for _ in range(self.n_arms)])
         self.f = [np.zeros(self.n_features) for _ in range(self.n_arms)]
@@ -40,8 +40,12 @@ class EpsilonGreedyContextualBandit:
         self.alpha = alpha
 
     def select_arm(self, context):
-
-        epsilon = min(1, self.epsilon * (self.n_arms/(self.i +1))) # für bernoulli epsilon = 5 nehmen
+        #epsilon = min(1, self.alpha * (self.budget/self.og_budget)**2 * 1/(self.og_budget - self.budget +1))
+        epsilon = min(1.0, 1 / 1000 * self.alpha * self.budget / (self.i + 1))
+        #epsilon = min(1, self.alpha * 1/(self.og_budget - self.budget+1))
+        #epsilon = min(1, self.alpha * self.budget/(self.i +1)**2)
+        #epsilon = min(1, self.alpha/(self.og_budget - self.budget+1)**2)
+        #epsilon =  min(1, self.alpha * np.exp(-np.exp((self.og_budget/self.budget))))
 
         if np.random.rand() < epsilon:
             return np.random.choice(self.n_arms)  # Exploration
