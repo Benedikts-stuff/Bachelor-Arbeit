@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.stats import beta, uniform
+from scipy.stats import beta
 
 # LaTeX-Einstellungen
 plt.rcParams['text.usetex'] = True
@@ -11,59 +11,56 @@ plt.rcParams['text.latex.preamble'] = r'''
     \usepackage[scaled=.92]{sourcesanspro}
 '''
 
-# Parameter für die Beta-Verteilung
-a = 0.5  # alpha
-b = 0.5  # beta
+# Definition der Parameter und Titel für jeden Subplot:
+# Links oben: a=10, b=10
+# Rechts oben: a=3,  b=3
+# Links unten: a=1,   b=1
+# Rechts unten: a=0.5, b=0.5
+params = [(10, 10), (2, 2), (0.9, 0.9), (0.5, 0.5)]
+titles = [r'$\mathcal{B}(10, 10)$',
+          r'$\mathcal{B}(2, 2)$',
+          r'$\mathcal{B}(0.9, 0.9)$',
+          r'$\mathcal{B}(0.5, 0.5)$']
 
-# Erzeuge einen Bereich von Werten für die x-Achse
-x = np.linspace(0, 1, 1000)
+# Erzeuge einen x-Bereich
+x = np.linspace(0.01, 1 - 0.01, 1000)
 
-# Berechne die Dichtefunktionen
-beta_pdf = beta.pdf(x, a, b)  # Beta-Verteilung
-uniform_pdf = uniform.pdf(x, 0, 1)  # Uniformverteilung im Intervall [0,1]
+# Erstelle ein 2x2 Grid für die Subplots
+fig, axes = plt.subplots(2, 2, figsize=(12, 10))
 
-# Erstelle die Plots
-plt.figure(figsize=(14, 6))
+# Iteriere über die Parameter und zeichne jeden Subplot
+for ax, (a, b), title in zip(axes.flatten(), params, titles):
+    # Berechne die Dichtefunktion der Beta-Verteilung
+    pdf = beta.pdf(x, a, b)
 
-# Plot für die Uniformverteilung
-plt.subplot(1, 2, 1)
-plt.plot(x, uniform_pdf, color='green', label='Uniform [0,1]')
-plt.fill_between(x, uniform_pdf, color='green', alpha=0.3)
-plt.title(r'$\mathcal{U}([0,1))$', fontsize=28)
-plt.xlabel(r'$x$', fontsize=24)  # LaTeX für die x-Achsenbeschriftung
-plt.ylabel(r'$f(x)$', fontsize=24)  # LaTeX für die y-Achsenbeschriftung
-plt.xlim(0, 1)
-plt.ylim(0, 2.5)
-plt.grid(True, linestyle='--', alpha=0.6)
+    # Zeichne die Linie und fülle den Bereich darunter
+    ax.plot(x, pdf, color='blue', lw=2, label=f'Beta({a}, {b})')
+    ax.fill_between(x, pdf, color='blue', alpha=0.3)
 
-# Füge statistische Informationen hinzu
-mean_uniform = 0.5
-variance_uniform = 1 / 12
-std_dev_uniform = np.sqrt(variance_uniform)
-info_text_uniform = fr'$\mu = {mean_uniform:.2f}$' + '\n' + fr'$\sigma = {std_dev_uniform:.4f}$' + '\n' + fr'$\sigma^2 = {variance_uniform:.4f}$'
-plt.text(0.6, 2.0, info_text_uniform, fontsize=18, bbox=dict(facecolor='white', alpha=0.8))
+    # Setze Titel und Achsenbeschriftungen
+    ax.set_title(title, fontsize=20)
+    ax.set_xlabel(r'$x$', fontsize=16)
+    ax.set_ylabel(r'$f(x)$', fontsize=16)
+    ax.set_xlim(0, 1)
 
-# Plot für die Beta-Verteilung
-plt.subplot(1, 2, 2)
-plt.plot(x, beta_pdf, color='blue', label=f'Beta({a}, {b})')
-plt.fill_between(x, beta_pdf, color='blue', alpha=0.3)
-plt.title(r'$\mathcal{B}(0.5, 0.5)$', fontsize=28)  # LaTeX für den Titel
-plt.xlabel(r'$x$', fontsize=24)  # LaTeX für die x-Achsenbeschriftung
-plt.ylabel(r'$f(x)$', fontsize=24)  # LaTeX für die y-Achsenbeschriftung
-plt.xlim(0, 1)
-plt.ylim(0, 2.5)
-plt.grid(True, linestyle='--', alpha=0.6)
+    # Wähle eine sinnvolle y-Achsenbegrenzung (etwas oberhalb des Maximums)
+    y_max = np.max(pdf) * 1.1
+    ax.set_ylim(0, y_max)
 
-# Füge statistische Informationen hinzu
-mean_beta = a / (a + b)
-variance_beta = (a * b) / ((a + b + 1) * (a + b)**2)
-std_dev_beta = np.sqrt(variance_beta)
-info_text_beta = fr'$\mu = {mean_beta:.2f}$' + '\n' + fr'$\sigma = {std_dev_beta:.4f}$' + '\n' + fr'$\sigma^2 = {variance_beta:.4f}$'
-plt.text(0.6, 2.0, info_text_beta, fontsize=18, bbox=dict(facecolor='white', alpha=0.8))
+    # Gitterlinien
+    ax.grid(True, linestyle='--', alpha=0.6)
 
+    # Berechne statistische Werte (Mittelwert und Standardabweichung)
+    mean = a / (a + b)
+    variance = (a * b) / (((a + b) ** 2) * (a + b + 1))
+    std = np.sqrt(variance)
+    info_text = fr'$\mu = {mean:.2f}$' + '\n' + fr'$\sigma = {std:.2f}$'
 
+    # Füge den Text in den Plot ein
+    ax.text(0.65, 0.8 * y_max, info_text, fontsize=14,
+            bbox=dict(facecolor='white', alpha=0.8))
 
-# Zeige die Plots
+# Optimiere das Layout und speichere den Plot
 plt.tight_layout()
-plt.savefig('beta_vs_uniform.pdf', dpi=300)
+plt.savefig('four_beta_distributions.pdf', dpi=300)
 plt.show()

@@ -130,19 +130,3 @@ class ThompsonSamplingContextualBandit:
         print('muHat TS', self.mu_hat)
 
 
-# Parameter festlegen
-num_arms = 3
-num_features = 3
-num_rounds = 100000
-true_cost = np.array([0.8, 1, 0.6])
-budget = 1500
-true_weights = np.array([[0.5, 0.1, 0.2], [0.1, 0.5, 0.2], [0.2, 0.1, 0.5]])
-contexts = np.random.rand(num_rounds, num_features)
-variance = 0.2
-
-# Algorithmus ausführen
-#bandit = ThompsonSamplingContextualBandit(num_features, variance, num_arms, contexts, true_weights,true_cost, budget)
-#bandit.run()
-
-#plot regret
-#regret = np.array(bandit.optimal_reward) - np.array(bandit.observed_reward_history)

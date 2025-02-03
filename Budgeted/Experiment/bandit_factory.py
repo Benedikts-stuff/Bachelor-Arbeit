@@ -24,7 +24,7 @@ import numpy as np
 # Bandit Factory
 class BanditFactory:
     @staticmethod
-    def create(bandit_type, runner, true_weights, true_cost, seed, true_cost_weights, cost_kind, adversary, alpha=0, reward_function=None, cost_function=None):
+    def create(bandit_type, runner, true_weights, true_cost, seed, true_cost_weights, cost_kind, adversary, alpha, reward_function, cost_function):
         print(type(cost_function))
         if adversary:
             reward_function = linear_cost_adversary
@@ -86,7 +86,7 @@ class BanditFactory:
            return LinUCB_CDC(runner.num_arms, runner.num_features, runner.context, true_weights, true_cost,
                             runner.budget, logger, seed, seed, true_cost_weights, reward_function, reward_function)
         elif bandit_type == 'Budget_CB':
-            return BudgetCB(runner.num_features, runner.num_arms,runner.budget,1,1, 1, reward_function, cost_function,
+            return BudgetCB(runner.num_features, runner.num_arms,runner.budget,1,1, 1, cost_function, cost_function,
                             runner.context, true_weights, true_cost_weights, logger, seed, seed)
 
         raise ValueError(f"Unknown bandit type: {bandit_type}")

@@ -47,7 +47,7 @@ algorithms= [
 
 # Runner-Klasse
 class Runner:
-    def __init__(self, n_rounds, reward_typ,c,cost_type,cost_index,  num_arms=3, num_features=3, budget=10000, adversary= False):
+    def __init__(self, n_rounds, reward_typ,c,cost_type,cost_index,  num_arms=3, num_features=3, budget=1000, adversary= False):
         self.iterations = n_rounds
         self.adversary = adversary
         self.cdc = c
@@ -65,7 +65,7 @@ class Runner:
         self.cost_index =cost_index
         self.reward_type = reward_typ
 
-        self.algorithms = ['C-LinearThompsonSampling', 'LinearEpsilonGreedy', 'LinearThompsonSampling', 'LinOmegaUCB', 'C-LinUCB', 'LinUCB']
+        self.algorithms = ['GPTS']
 
 
     def run_experiment(self):
@@ -109,7 +109,7 @@ class Runner:
         bandit = None
         if self.cdc:
             if reward_type == 'linear' and self.cost_type == 'linear':
-                bandit = BanditFactory.create(bandit_type, self, true_weights, true_cost, seed, true_cost_weights, cost_kind,adversary, linear_reward, linear_cost)
+                bandit = BanditFactory.create(bandit_type, self, true_weights, true_cost, seed, true_cost_weights, cost_kind,adversary, linear_reward,0, linear_cost)
             elif reward_type == 'polynomial' and self.cost_type == 'linear':
                 bandit = BanditFactory.create(bandit_type, self, true_weights, true_cost, seed, true_cost_weights,
                                               cost_kind, polynomial_reward,adversary, linear_cost, adversary)
@@ -122,7 +122,7 @@ class Runner:
 
         else:
             bandit = BanditFactory.create(bandit_type, self, true_weights, true_cost, seed, true_cost_weights,
-                                          cost_kind, adversary, linear_reward)
+                                          cost_kind, adversary, 0, linear_reward, linear_cost)
 
 
         bandit.run()
@@ -292,7 +292,7 @@ class Runner:
 reward_type = ['linear', 'nonlinear']
 cdc = False #context dependent cost
 adversary = False
-runner = Runner(30,reward_type[0], cdc, reward_type[0], 1, adversary=adversary)
+runner = Runner(1,reward_type[0], cdc, reward_type[0], 1, adversary=adversary)
 start_time = time.time()  # Startzeitpunkt
 runner.run_experiment()
 #runner.plot_function()
