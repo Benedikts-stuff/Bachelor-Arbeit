@@ -26,7 +26,7 @@ class Thompson_sampling:
             self.beta[arm] += 1
 
 
-data = pd.read_csv('../Budgeted/Experiment/data/facebook-ad-campaign-data.csv')
+data = pd.read_csv('../Budgeted/Experiment/test_experiment/data/facebook-ad-campaign-data.csv')
 
 grouped_data = data.groupby('campaign_id').agg({
     'clicks': 'sum',

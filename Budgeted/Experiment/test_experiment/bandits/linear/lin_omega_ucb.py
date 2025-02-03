@@ -20,7 +20,6 @@ class LinOmegaUCB:
         for i in range(self.n_arms):
             A_inv = np.linalg.inv(self.A[i])
             theta_hat = A_inv.dot(self.b[i])
-            variance = context.dot(A_inv).dot(context)
             mu_r = theta_hat.dot(context)
 
             eta = 1
@@ -31,7 +30,7 @@ class LinOmegaUCB:
             B = 2 * arm_count * mu_r + z**2 * eta
             C = arm_count * mu_r**2
             x = np.sqrt((B**2 / (4 * A**2)) - (C / A))
-            omega_r = np.clip((B / (2 * A)) + x, 0, 1)
+            omega_r = (B / (2 * A)) + x
             upper.append(omega_r)
 
 
@@ -45,7 +44,6 @@ class LinOmegaUCB:
         for i in range(self.n_arms):
             A_inv_c = np.linalg.inv(self.A[i])
             theta_hat_c = A_inv_c.dot(self.b_c[i])
-            variance = context.dot(A_inv_c).dot(context)
             mu_r = theta_hat_c.dot(context)
 
             eta = 1
@@ -55,8 +53,8 @@ class LinOmegaUCB:
             A = arm_count + z**2 * eta
             B = 2 * arm_count * mu_r + z**2 * eta
             C = arm_count * mu_r**2
-            x = np.sqrt((B**2 / (4 * A**2)) - (C / A))
-            omega_r = np.clip((B / (2 * A)) - x, self.gamma, 1)
+            x = np.sqrt(np.clip((B**2 / (4 * A**2)) - (C / A), self.gamma, None))
+            omega_r = (B / (2 * A)) - x
             lower.append(omega_r)
 
         return lower

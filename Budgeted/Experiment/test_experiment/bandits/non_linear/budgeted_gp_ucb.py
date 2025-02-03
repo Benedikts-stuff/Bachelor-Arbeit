@@ -1,7 +1,7 @@
 import numpy as np
 from sklearn.gaussian_process.kernels import RBF
 from .models.gpr import MyGPR
-
+from sklearn.gaussian_process.kernels import ConstantKernel as C
 
 class GPUCB:
     def __init__(self, n_arms, context_dim, gamma):
@@ -10,15 +10,15 @@ class GPUCB:
         self.delta = 1e-8
         self.beta_t = 1
 
-        self.kernels = [RBF(length_scale=0.2, length_scale_bounds=(1e-60, 10)) for _ in range(n_arms)]
+        self.kernels = [C(1.0, (1e-3, 1e3)) *RBF(length_scale=0.05, length_scale_bounds=(1e-5, 2)) for _ in range(n_arms)]
         self.gps = [
-            MyGPR(kernel=kernel, alpha=1e-2, normalize_y=True, n_restarts_optimizer=10)
+            MyGPR(kernel=kernel, alpha=1e-6, normalize_y=True, n_restarts_optimizer=10)
             for kernel in self.kernels
         ]
 
-        self.kernels_c = [RBF(length_scale=0.2, length_scale_bounds=(1e-60, 10)) for _ in range(n_arms)]
+        self.kernels_c = [C(1.0, (1e-3, 1e3)) * RBF(length_scale=0.05, length_scale_bounds=(1e-5, 2)) for _ in range(n_arms)]
         self.gps_c = [
-            MyGPR(kernel=kernel, alpha=1e-2, normalize_y=True, n_restarts_optimizer=10)
+            MyGPR(kernel=kernel, alpha=1e-6, normalize_y=True, n_restarts_optimizer=10)
             for kernel in self.kernels_c
         ]
 
@@ -36,7 +36,7 @@ class GPUCB:
         ucb_values = []
         for arm_id in range(self.n_arms):
             mu, sigma = self.gps[arm_id].predict(context.reshape(1, -1), return_std=True)
-            beta = 2 * np.log(self.arm_counts[arm_id] * ((round+1) ** 2) * np.pi ** 2 / (6 * self.gamma))
+            beta = 2 * np.log(self.arm_counts[arm_id] * ((round+1)**2) * np.pi ** 2 / (6 * self.gamma))
             ucb = np.clip(mu + (np.sqrt(beta / 5) * sigma), 0, 1)
             ucb_values.append(ucb[0])
 
@@ -67,7 +67,7 @@ class GPUCB:
         self.arm_cost[chosen_arm].append(cost)
         self.arm_counts[chosen_arm] +=1
 
-        if sum(len(v) for v in self.arm_contexts) < 500:
+        if sum(len(v) for v in self.arm_contexts) < 300:
             self.gps[chosen_arm].fit(
                 np.array(self.arm_contexts[chosen_arm]),
                 np.array(self.arm_rewards[chosen_arm])

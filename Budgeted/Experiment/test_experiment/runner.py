@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 import random
-import multiprocessing as mp
+import multiprocess as mp
 from logger import Logger
 
 class Runner:
@@ -33,13 +33,14 @@ class Runner:
 
         # Select new weights for this run
         self.get_reward.reinitialize_weights(seed)
-        self.get_cost.reinitialize_weights(seed)
+        self.get_cost.reinitialize_weights(seed+42)
 
         while budget > 0:
-            context = self.generator.sample_uniform()
+            print(round_num)
+            context = self.generator.sample()
             action = bandit.select_arm(context, round_num)
-            reward = self.get_reward(context)
-            cost = self.get_cost(context)
+            reward = self.get_reward(context, round_num)
+            cost = self.get_cost(context, round_num)
             bandit.update(reward[action], cost[action], action, context)
 
             optimal_reward =  np.max(np.array(reward)/(np.array(cost)+gamma))
@@ -56,7 +57,8 @@ class Runner:
         local_logger.save_to_csv()  # Speichert alle gesammelten Logs nach dem Run
 
     def run_experiment(self):
-        with mp.Pool(mp.cpu_count()) as pool:
+        ctx = mp.get_context('spawn')
+        with ctx.Pool(mp.cpu_count()) as pool:
             self.results = pool.map(self._run_bandit, [(i, i) for i in range(self.n_runs)])
 
 

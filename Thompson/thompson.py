@@ -27,7 +27,7 @@ class Thompson_Bandit:
         else:
             self.q[arm] += 1
 
-data_path = '../Budgeted/Experiment/data/facebook-ad-campaign-data.csv'
+data_path = '../Budgeted/Experiment/test_experiment/data/facebook-ad-campaign-data.csv'
 ad_data = pd.read_csv(data_path)
 
 grouped_data = ad_data.groupby('campaign_id').agg({

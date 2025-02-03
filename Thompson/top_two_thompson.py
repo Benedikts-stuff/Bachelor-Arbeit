@@ -35,7 +35,7 @@ class ThompsonSampling:
 # Beispiel für die Verwendung der Klasse
 
 # Lese die Werbedaten ein
-data_path = '../Budgeted/Experiment/data/facebook-ad-campaign-data.csv'
+data_path = '../Budgeted/Experiment/test_experiment/data/facebook-ad-campaign-data.csv'
 ad_data = pd.read_csv(data_path)
 
 # Aggregiere die Daten nach Kampagne

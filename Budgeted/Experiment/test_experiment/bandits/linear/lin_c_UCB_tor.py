@@ -2,7 +2,7 @@ import numpy as np
 
 
 
-class LinUCB:
+class TorLinCUCB:
     def __init__(self, n_arms, context_dim):
         self.n_arms = n_arms
         self.n_features = context_dim
@@ -21,13 +21,14 @@ class LinUCB:
         A_inv = np.array([np.linalg.inv(self.A[a]) for a in range(self.n_arms)])
         expected_rewards = np.array([np.dot(self.theta_hat[a], context) for a in range(self.n_arms)])
         expected_cost = np.array([np.dot(self.theta_hat_c[a], context) for a in range(self.n_arms)])
-        uncertainty = np.array([context.dot(A_inv[i]).dot(context)for i in range(self.n_arms)])
-        ci = (1 + np.sqrt(np.log(2 * (round + 1)) / 2)) * np.sqrt(uncertainty)
+        uncertainty = np.array([context.dot(A_inv[i]).dot(context) for i in range(self.n_arms)])
+        alpha = 2 * np.sqrt(np.log(round + 1) / (self.arm_counts + 1))
+        ci = alpha * np.sqrt(uncertainty)
 
-        upper = expected_rewards + ci
-        lower = np.clip(expected_cost - ci, self.gamma, None)
+        upper = np.clip(expected_rewards + ci, 0, 1)
+        lower = np.clip(expected_cost, self.gamma, 1)
 
-        ratio = upper/lower
+        ratio = upper / lower
         return np.argmax(ratio)
 
     def update(self, reward, cost, chosen_arm, context):

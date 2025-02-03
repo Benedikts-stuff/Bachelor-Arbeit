@@ -1,7 +1,7 @@
 import numpy as np
 
 
-class ThompsonSampling:
+class AdvThompsonSampling:
     def __init__(self, n_arms, context_dim, v):
         self.n_features = context_dim
         self.variance = v
@@ -30,6 +30,8 @@ class ThompsonSampling:
         rewards = np.clip(np.array([np.dot(theta_hat_r[arm], context) for arm in range(self.n_arms)]), 0, 1)
         cost = np.clip(np.array([np.dot(theta_hat_c[arm], context) for arm in range(self.n_arms)]), self.gamma, 1)
 
+        if round % 200 == 0: self.reset()
+
         return np.argmax(rewards /cost)
 
 
@@ -39,5 +41,12 @@ class ThompsonSampling:
         self.f_c[chosen_arm] += cost * context
         self.mu_hat[chosen_arm] = np.linalg.inv(self.B[chosen_arm]).dot(self.f[chosen_arm])
         self.mu_hat_c[chosen_arm] = np.linalg.inv(self.B[chosen_arm]).dot(self.f_c[chosen_arm])
+
+    def reset(self):
+        self.B = np.array([np.identity(self.n_features) for _ in range(self.n_arms)])
+        self.f = [np.zeros(self.n_features) for _ in range(self.n_arms)]
+        self.f_c = [np.zeros(self.n_features) for _ in range(self.n_arms)]
+        self.mu_hat = [np.zeros(self.n_features) for _ in range(self.n_arms)]
+        self.mu_hat_c = [np.zeros(self.n_features) for _ in range(self.n_arms)]
 
 

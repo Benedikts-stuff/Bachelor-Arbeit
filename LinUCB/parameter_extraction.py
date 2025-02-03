@@ -89,5 +89,5 @@ class Sampler:
 
 
 
-sampler = Sampler('../Budgeted/Experiment/data/facebook-ad-campaign-data.csv', 0)
+sampler = Sampler('../Budgeted/Experiment/test_experiment/data/facebook-ad-campaign-data.csv', 0)
 model0 = sampler.get_model(0)

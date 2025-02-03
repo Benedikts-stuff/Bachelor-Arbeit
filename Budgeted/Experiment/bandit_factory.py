@@ -1,3 +1,4 @@
+from Budgeted.CDC.ucb_cbc import C_LinUCB_CDC
 from Budgeted.Experiment.utils import linear_cost_adversary
 from Budgeted.c_b_thompson import ThompsonSamplingContextualBandit
 from Budgeted.greedy.bbe_greedy import EpsilonGreedyContextualBandit2
@@ -85,6 +86,10 @@ class BanditFactory:
         elif bandit_type == 'LinUCB_CDC':
            return LinUCB_CDC(runner.num_arms, runner.num_features, runner.context, true_weights, true_cost,
                             runner.budget, logger, seed, seed, true_cost_weights, reward_function, reward_function)
+        elif bandit_type == 'C_LinUCB_CDC':
+           return C_LinUCB_CDC(runner.num_arms, runner.num_features, runner.context, true_weights, true_cost,
+                            runner.budget, logger, seed, seed, true_cost_weights, reward_function, reward_function)
+
         elif bandit_type == 'Budget_CB':
             return BudgetCB(runner.num_features, runner.num_arms,runner.budget,1,1, 1, cost_function, cost_function,
                             runner.context, true_weights, true_cost_weights, logger, seed, seed)

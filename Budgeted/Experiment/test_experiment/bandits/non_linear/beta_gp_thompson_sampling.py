@@ -1,21 +1,22 @@
 import numpy as np
 from sklearn.gaussian_process.kernels import RBF
 from .models.gpr import MyGPR
+from sklearn.gaussian_process.kernels import ConstantKernel as C
 
 class Beta_GPTS:
     def __init__(self, n_arms, context_dim, delta= 0.1):
         self.n_arms = n_arms
         self.n_features = context_dim
 
-        self.kernels = [RBF(length_scale=0.2, length_scale_bounds=(1e-60, 10)) for _ in range(n_arms)]
+        self.kernels = [C(1.0, (1e-3, 1e3)) *RBF(length_scale=0.05, length_scale_bounds=(1e-5, 2)) for _ in range(n_arms)]
         self.gps = [
-            MyGPR(kernel=kernel, alpha=1e-2, normalize_y=True, n_restarts_optimizer=10)
+            MyGPR(kernel=kernel, alpha=1e-6, normalize_y=True, n_restarts_optimizer=10)
             for kernel in self.kernels
         ]
 
-        self.kernels_c = [RBF(length_scale=0.2, length_scale_bounds=(1e-60, 10)) for _ in range(n_arms)]
+        self.kernels_c = [C(1.0, (1e-3, 1e3)) * RBF(length_scale=0.05, length_scale_bounds=(1e-5, 2)) for _ in range(n_arms)]
         self.gps_c = [
-            MyGPR(kernel=kernel, alpha=1e-2, normalize_y=True, n_restarts_optimizer=10)
+            MyGPR(kernel=kernel, alpha=1e-6, normalize_y=True, n_restarts_optimizer=10)
             for kernel in self.kernels_c
         ]
 
@@ -44,14 +45,17 @@ class Beta_GPTS:
             mu, sigma = self.gps[arm].predict(context.reshape(1, -1), return_std=True)
             mu_c, sigma_c = self.gps_c[arm].predict(context.reshape(1, -1), return_std=True)
 
-            gain = 0.5 * np.log(1 + sigma ** 2 / self.noise_var**2)
-            gain_c = 0.5 * np.log(1 + sigma_c ** 2 / self.noise_var**2)
+            gain = max(0.5 * np.log(1 + sigma ** 2 / self.noise_var**2), 1e-3)
+            gain_c = max(0.5 * np.log(1 + sigma_c ** 2 / self.noise_var**2), 1e-3)
+
+            scale = np.clip(1/gain, 1.0, self.arm_counts[arm])
+            scale_c = np.clip(1/gain_c, 1.0, self.arm_counts[arm])
 
             # Kombinieren von Mean und Bonus (hier als Beispiel Beta-Verteilung, ähnlich wie dein Ansatz)
-            sampled_reward = np.clip(np.random.beta(np.exp(1/gain) *self.arm_counts[arm] * mu,
-                                            np.exp(1/gain) * self.arm_counts[arm] * (1-mu)), self.gamma, 1-self.gamma)
-            sampled_cost = np.clip(np.random.beta(np.exp(1/gain_c) * self.arm_counts[arm] * mu_c,
-                                            np.exp(1/gain_c) * self.arm_counts[arm] * (1-mu_c)), self.gamma, 1-self.gamma)
+            sampled_reward = np.clip(np.random.beta(scale *self.arm_counts[arm] * mu,
+                                            scale * self.arm_counts[arm] * (1-mu)), self.gamma, 1-self.gamma)
+            sampled_cost = np.clip(np.random.beta(scale_c * self.arm_counts[arm] * mu_c,
+                                            scale_c * self.arm_counts[arm] * (1-mu_c)), self.gamma, 1-self.gamma)
 
             rewards.append(sampled_reward)
             costs.append(sampled_cost)

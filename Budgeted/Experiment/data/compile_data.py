@@ -27,7 +27,7 @@ GENDER_M = "gender_M"
 GENDER_F = "gender_F"
 
 # Weitere statische Variablen
-FILE_PATH = "./facebook-ad-campaign-data.csv"  # Dateipfad zur CSV-Datei
+FILE_PATH = "../test_experiment/data/facebook-ad-campaign-data.csv"  # Dateipfad zur CSV-Datei
 OUTPUT_CONTEXT_PROBS = "context_probs.csv"  # Output-Datei für Kontextwahrscheinlichkeiten
 SEED = 42  # Zufallsseed für Train-Test-Split
 
@@ -166,7 +166,7 @@ def split_and_aggregate_by_campaign(filepath, output_dir="./"):
 
 
 # Beispielaufruf
-file_path = "facebook-ad-campaign-data.csv"
+file_path = "../test_experiment/data/facebook-ad-campaign-data.csv"
 #output_directory = "./"  # Speicherort der CSVs anpassen
 #campaign_datasets = split_and_aggregate_by_campaign(file_path, output_directory)
 

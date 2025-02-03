@@ -24,7 +24,9 @@ def generate_true_weights(num_arms, num_features,method=None,seed=None):
         return normalize_weights(weights)
     elif method == "beta":
         weights = np.array([np.random.beta(0.5, 0.5, num_features) for _ in range(num_arms)])
-        return normalize_weights(weights)
+        x = normalize_weights(weights)
+        print(x)
+        return x
     else:
         return []
 
@@ -37,7 +39,7 @@ def generate_true_cost(num_arms,cdc, method='uniform'):
         return np.clip(np.random.beta(0.5, 0.5, num_arms), 0.001, 1)
 
 # Reward function
-def linear_reward(context, weight):
+def linear_reward(context, weight, round):
     return np.clip(np.dot(weight.T, context), 0.000001, None)
 
 def linear_reward_adversary(context, weight, round):
@@ -127,7 +129,7 @@ def polynomial_reward2(context, true_theta):
     return rewards
 
 # Cost function
-def linear_cost(context, cost_weight):
+def linear_cost(context, cost_weight, round):
     return np.clip(np.dot(cost_weight, context), 0.000001, None)
 
 # Cost function

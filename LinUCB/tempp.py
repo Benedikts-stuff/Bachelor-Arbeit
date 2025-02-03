@@ -18,7 +18,7 @@ class Get_linear_model():
 
     def get_model(self):
         # Datei einlesen
-        file_path = '../Budgeted/Experiment/data/facebook-ad-campaign-data.csv'
+        file_path = '../Budgeted/Experiment/test_experiment/data/facebook-ad-campaign-data.csv'
         data = pd.read_csv(file_path)
         scaler = StandardScaler()
 
@@ -162,7 +162,7 @@ class Get_linear_model():
 
     def sample_contexts(self):
         # Datei einlesen
-        file_path = '../Budgeted/Experiment/data/facebook-ad-campaign-data.csv'
+        file_path = '../Budgeted/Experiment/test_experiment/data/facebook-ad-campaign-data.csv'
         data = pd.read_csv(file_path)
 
         data['age'] = data['age'].apply(alter_mittelwert)

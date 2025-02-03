@@ -141,8 +141,8 @@ class OmegaUCB_CDC:
             self.arm_counts[chosen_arm] += 1
 
             # Calculate reward and optimal reward using modular reward and cost functions
-            actual_costs = np.array(self.cost_fn(context, self.cost_weight)) #+ np.random.normal(0, 0.0001, self.n_actions)
-            actual_reward = np.array(self.reward_fn(context, self.true_theta)) # + np.random.normal(0, 0.0001, self.n_actions)
+            actual_costs = np.array(self.cost_fn(context, self.cost_weight, i)) #+ np.random.normal(0, 0.0001, self.n_actions)
+            actual_reward = np.array(self.reward_fn(context, self.true_theta, i)) # + np.random.normal(0, 0.0001, self.n_actions)
 
             optimal_arm = np.argmax(actual_reward /actual_costs)
 

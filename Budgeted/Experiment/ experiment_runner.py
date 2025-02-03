@@ -65,7 +65,7 @@ class Runner:
         self.cost_index =cost_index
         self.reward_type = reward_typ
 
-        self.algorithms = ['GPTS']
+        self.algorithms = ['C_LinUCB_CDC', 'LinOmegaUCB_CDC']
 
 
     def run_experiment(self):
@@ -109,7 +109,7 @@ class Runner:
         bandit = None
         if self.cdc:
             if reward_type == 'linear' and self.cost_type == 'linear':
-                bandit = BanditFactory.create(bandit_type, self, true_weights, true_cost, seed, true_cost_weights, cost_kind,adversary, linear_reward,0, linear_cost)
+                bandit = BanditFactory.create(bandit_type, self, true_weights, true_cost, seed, true_cost_weights, cost_kind,adversary, 0, linear_reward, linear_cost)
             elif reward_type == 'polynomial' and self.cost_type == 'linear':
                 bandit = BanditFactory.create(bandit_type, self, true_weights, true_cost, seed, true_cost_weights,
                                               cost_kind, polynomial_reward,adversary, linear_cost, adversary)
@@ -177,6 +177,7 @@ class Runner:
             'Budget_CB': ('-', 16),
             'NeuralGreedy': ('-', 17),
             'EpsilonFirst': ('-', 18),
+            'C_LinUCB_CDC':  ('-', 18),
 
         }
 
@@ -292,7 +293,7 @@ class Runner:
 reward_type = ['linear', 'nonlinear']
 cdc = False #context dependent cost
 adversary = False
-runner = Runner(1,reward_type[0], cdc, reward_type[0], 1, adversary=adversary)
+runner = Runner(20,reward_type[0], cdc, reward_type[0], 1, adversary=adversary)
 start_time = time.time()  # Startzeitpunkt
 runner.run_experiment()
 #runner.plot_function()
