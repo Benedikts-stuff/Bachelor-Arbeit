@@ -2,11 +2,13 @@ import numpy as np
 import torch
 import random
 import multiprocess as mp
+from sympy import bernoulli
+
 from logger import Logger
 
 class Runner:
     def __init__(self, algo_name, bandit_class, bandit_params, reward_function, cost_function, generator, n_features,
-                 n_runs=10, b=1000, filename="experiment_logs.csv"):
+                 n_runs=10, b=1000, filename="experiment_logs.csv", bernoulli=False):
         self.algo_name = algo_name
         self.bandit_class = bandit_class
         self.bandit_params = bandit_params
@@ -17,6 +19,7 @@ class Runner:
         self.B = b
         self.results = []
         self.filename = filename
+        self.bernoulli = bernoulli
 
     def _run_bandit(self, args):
         seed, run_index = args
@@ -41,7 +44,11 @@ class Runner:
             action = bandit.select_arm(context, round_num)
             reward = self.get_reward(context, round_num)
             cost = self.get_cost(context, round_num)
-            bandit.update(reward[action], cost[action], action, context)
+
+            if self.bernoulli:
+                bandit.update(np.random.binomial(1, reward[action]), np.random.binomial(1, cost[action]), action, context)
+            else:
+                bandit.update(reward[action], cost[action], action, context)
 
             optimal_reward =  np.max(np.array(reward)/(np.array(cost)+gamma))
             regret = np.clip(optimal_reward - reward[action]/(cost[action]+gamma), 0, 1)

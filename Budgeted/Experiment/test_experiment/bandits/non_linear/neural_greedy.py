@@ -17,12 +17,12 @@ class NeuralGreedy:
 
         # Initialize variables
         self.models = [SingleArmNetwork(self.context_dim) for _ in range(self.n_arms)]
-        self.optimizer = [optim.Adam(model.parameters(), lr=0.001) for model in self.models]
+        self.optimizer = [optim.Adam(model.parameters(), lr=0.01) for model in self.models]
         self.criterion = nn.MSELoss()
 
         # models for cost
         self.models_c = [SingleArmNetwork(self.context_dim) for _ in range(self.n_arms)]
-        self.optimizer_c = [optim.Adam(model.parameters(), lr=0.001) for model in self.models_c]
+        self.optimizer_c = [optim.Adam(model.parameters(), lr=0.01) for model in self.models_c]
         self.criterion_c = nn.MSELoss()
 
         self.contexts_seen = [[] for _ in range(self.n_arms)]
@@ -30,18 +30,22 @@ class NeuralGreedy:
         self.costs_seen = [[] for _ in range(self.n_arms)]
 
     def select_arm(self, context, t):
+        if t< self.n_arms:
+            self.contexts_seen[t].append(context)
+            return t
+
         epsilon = min(1, self.alpha * (self.n_arms / (t + 1)))
         arm: any
         if np.random.rand() < epsilon:
             arm = np.random.randint(self.n_arms)  # Explore
         else:
-            context_tensor = torch.FloatTensor(context).unsqueeze(0)
+            context_tensor = torch.DoubleTensor(context).unsqueeze(0)
             context_tensor.requires_grad = True
 
             # Vorhersagen für Belohnungen und Kosten
-            reward = np.array([np.clip(self.models[t](context_tensor).detach().numpy().squeeze(0), 0, 1) for t in range(self.n_arms)])
-            cost = np.array([np.clip(self.models_c[t](context_tensor).detach().numpy().squeeze(0), self.gamma, 1) for t in range(self.n_arms)])
-
+            reward = np.array([np.clip(self.models[t](context_tensor).detach().numpy().squeeze(0), 0, None) for t in range(self.n_arms)])
+            cost = np.array([np.clip(self.models_c[t](context_tensor).detach().numpy().squeeze(0), self.gamma, None) for t in range(self.n_arms)])
+            print("guessed: ", reward)
             # Arm mit dem besten Verhältnis von Belohnung zu Kosten auswählen
             arm = np.argmax(reward / cost)
 
@@ -60,43 +64,85 @@ class NeuralGreedy:
             self.update_parameters_cost(chosen_arm,  self.contexts_seen[chosen_arm], self.costs_seen[chosen_arm])
 
     def update_parameters_reward(self, action, contexts, rewards):
-        batch_size = len(contexts)
-        if len(contexts) >= 20:
-            batch_size = 20
+        # Skalierungsfaktor für die Rewards
+        scale_factor = 1
 
-        dataset = TensorDataset(torch.FloatTensor(contexts),
-                                torch.FloatTensor(rewards))
+        # Skalierte Rewards für das Training
+        scaled_rewards = [r * scale_factor for r in rewards]
+
+        # Dynamische Batch-Größe (maximal 256)
+        batch_size = min(len(contexts), 256)
+
+        # Erstelle ein Dataset und DataLoader
+        dataset = TensorDataset(torch.DoubleTensor(contexts), torch.DoubleTensor(scaled_rewards))
         dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
+        # Hole das Modell und den Optimizer für die gegebene Aktion
         model = self.models[action]
+        model = model.double()
         optimizer = self.optimizer[action]
 
+        # Learning Rate Scheduler (optional)
+        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
+
+        # Setze das Modell in den Trainingsmodus
         model.train()
+
+        # Training über den gesamten Datensatz
         for batch, reward in dataloader:
             optimizer.zero_grad()
+
+            # Vorhersage des Modells
             predicted_reward = model(batch).squeeze()
+
+            # Berechnung des Verlusts mit den **hochskalierten** Rewards
             loss = self.criterion(predicted_reward, reward)
+
+            # Backpropagation
             loss.backward()
             optimizer.step()
 
-    def update_parameters_cost(self, action, contexts, cost):
-        batch_size = len(contexts)
-        if len(contexts) >= 20:
-            batch_size = 20
+        # Update der Learning Rate (falls ein Scheduler verwendet wird)
+        scheduler.step()
 
-        dataset = TensorDataset(torch.FloatTensor(contexts),
-                                torch.FloatTensor(cost))
+    def update_parameters_cost(self, action, contexts, costs):
+        # Dynamische Batch-Größe (z. B. bis zu 256, aber nicht mehr als die Anzahl der Contexts)
+        batch_size = min(len(contexts), 256)  # Erhöhe die Batch-Größe für stabilere Gradienten
+
+        # Erstelle ein Dataset und DataLoader
+        dataset = TensorDataset(torch.DoubleTensor(contexts), torch.DoubleTensor(costs))
         dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
+        # Hole das Modell und den Optimizer für die gegebene Aktion
         model = self.models_c[action]
+        model = model.double()
         optimizer = self.optimizer_c[action]
 
+        # Learning Rate Scheduler (optional)
+        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
+
+        # Setze das Modell in den Trainingsmodus
         model.train()
+
+        # Training über den gesamten Datensatz
         for batch, cost in dataloader:
+            # Nullsetzen der Gradienten
             optimizer.zero_grad()
-            predicted_reward = model(batch).squeeze()
-            loss = self.criterion_c(predicted_reward, cost)
+
+            # Vorhersage des Modells
+            predicted_cost = model(batch).squeeze()
+
+            # Berechnung des Verlusts
+            loss = self.criterion(predicted_cost, cost)
+
+            # Backpropagation
             loss.backward()
+
+            # Update der Parameter
             optimizer.step()
+
+
+        # Update der Learning Rate (falls ein Scheduler verwendet wird)
+        scheduler.step()
 
 

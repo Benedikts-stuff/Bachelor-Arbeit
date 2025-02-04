@@ -16,4 +16,4 @@ class FacebookData:
         self.kde = pre_processor.get_kde()
 
     def sample(self):
-        return np.array(self.kde.resample(1).T[0], dtype=np.float64)
+        return np.clip(np.array(self.kde.resample(1).T[0], dtype=np.float64),0, None)

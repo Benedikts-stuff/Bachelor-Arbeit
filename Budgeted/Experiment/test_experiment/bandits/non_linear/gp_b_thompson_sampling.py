@@ -28,10 +28,6 @@ class GPTS:
         self.R = 1#max reward
         self.delta = delta # initialisierung
         self.gamma = 1e-8
-
-        self.sigma_t_1 = np.array([2.5, 2.5 ,2.5, 2.5, 2.5])
-        self.sigma_t_1_c = np.array([2.5, 2.5, 2.5, 2.5, 2.5])
-
         self.arm_counts = np.ones(n_arms)
 
     def compute_beta_t(self, gain):
@@ -51,8 +47,6 @@ class GPTS:
             gain_c = 0.5 * np.log(1 + sigma_c ** 2 / 0.2**2)
             beta_t = self.compute_beta_t(gain)
             beta_t_c = self.compute_beta_t(gain_c)
-            self.sigma_t_1[arm] = sigma
-            self.sigma_t_1_c[arm] = sigma_c
             rewards.append(np.random.normal(np.clip(mu, 0, 1), beta_t * sigma))
             costs.append(np.random.normal(np.clip(mu_c, self.gamma, 1), beta_t_c * sigma_c))
 
