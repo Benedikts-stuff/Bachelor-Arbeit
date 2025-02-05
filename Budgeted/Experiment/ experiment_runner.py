@@ -65,7 +65,7 @@ class Runner:
         self.cost_index =cost_index
         self.reward_type = reward_typ
 
-        self.algorithms = ['C_LinUCB_CDC', 'LinOmegaUCB_CDC']
+        self.algorithms = ['Budget_CB']
 
 
     def run_experiment(self):
@@ -291,7 +291,7 @@ class Runner:
 
 # Starte dasd Experiment
 reward_type = ['linear', 'nonlinear']
-cdc = False #context dependent cost
+cdc = True #context dependent cost
 adversary = False
 runner = Runner(20,reward_type[0], cdc, reward_type[0], 1, adversary=adversary)
 start_time = time.time()  # Startzeitpunkt

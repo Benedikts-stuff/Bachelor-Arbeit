@@ -12,8 +12,6 @@ class LinGreedy:
         self.theta_hat_c = [np.zeros(self.n_features) for _ in range(self.n_arms)]
         self.gamma = 1e-8
 
-    def sigmoid(self, x):
-        return 1 / (1 + np.exp(-x))
 
     def select_arm(self, context, i):
         if i < self.n_arms:
@@ -23,8 +21,8 @@ class LinGreedy:
         if np.random.rand() < epsilon:
             return np.random.choice(self.n_arms)
         else:
-            expected_rewards = np.array([self.sigmoid(np.clip(np.dot(self.theta_hat[a], context), self.gamma, 1)) for a in range(self.n_arms)])
-            expected_cost = np.array([self.sigmoid(np.clip(np.dot(self.theta_hat_c[a], context), self.gamma, 1)) for a in range(self.n_arms)])
+            expected_rewards = np.array([np.clip(np.dot(self.theta_hat[a], context), 0, None) for a in range(self.n_arms)])
+            expected_cost = np.array([np.clip(np.dot(self.theta_hat_c[a], context), self.gamma, None) for a in range(self.n_arms)])
 
             return np.argmax(expected_rewards / expected_cost)
 

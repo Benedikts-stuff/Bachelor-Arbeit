@@ -10,7 +10,7 @@ class BudgetCB:
         self.delta =1/budget  # Confidence parameter can be set as 1/B where B is budget
         self.L = 3  # Bound on \|context\|_2
         self.S = S  # Bound on \|theta\|_2
-        self.C = 0.001 #0.001 und 0.005 gut #np.log(1/self.delta)
+        self.C = 0.0001 #0.001 und 0.005 gut #np.log(1/self.delta)
         self.lamda = 0.0001 # is lower bound for the cost of all arms
 
         self.A = [rho * np.identity(d) for _ in range(num_arms)]
@@ -81,8 +81,8 @@ class BudgetCB:
             context_t = self.contexts[t]
             arm = self.select_arm(context_t, t)
 
-            rewards = self.rewards(context_t, self.true_theta)
-            costs = self.costs(context_t, self.true_theta_cost)
+            rewards = self.rewards(context_t, self.true_theta, t)
+            costs = self.costs(context_t, self.true_theta_cost, t)
 
 
             self.update(arm, rewards[arm], costs[arm], context_t)

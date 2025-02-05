@@ -3,11 +3,11 @@ import numpy as np
 
 
 class TorLinUCB:
-    def __init__(self, n_arms, context_dim):
+    def __init__(self, n_arms, context_dim, budget):
         self.n_arms = n_arms
         self.n_features = context_dim
         self.gamma = 1e-8
-        self.arm_counts = np.zeros(self.n_arms)
+        self.arm_counts = np.ones(self.n_arms)
         self.A = np.array([np.identity(self.n_features) for _ in range(self.n_arms)])  # Covariance matrices for each arm
         self.b = np.zeros((self.n_arms, self.n_features))  # Linear predictors for each arm
         self.theta_hat = np.zeros((self.n_arms, self.n_features))  # Estimated theta for each arm (for debugging)
@@ -21,14 +21,15 @@ class TorLinUCB:
         A_inv = np.array([np.linalg.inv(self.A[a]) for a in range(self.n_arms)])
         expected_rewards = np.array([np.dot(self.theta_hat[a], context) for a in range(self.n_arms)])
         expected_cost = np.array([np.dot(self.theta_hat_c[a], context) for a in range(self.n_arms)])
-        uncertainty = np.array([context.dot(A_inv[i]).dot(context)for i in range(self.n_arms)])
-        alpha = 2 * np.sqrt(np.log(round + 1) / (self.arm_counts + 1))
-        ci = alpha * np.sqrt(uncertainty)
+        a= (round + 1)*np.log(round+1) +1
+        alpha = np.sqrt(np.clip(2 * np.log(a) / self.arm_counts, 0, None))
 
-        upper = np.clip(expected_rewards + ci, 0, 1)
-        lower = np.clip(expected_cost - ci, self.gamma, 1)
+        ci = alpha
 
-        ratio = upper/lower
+        upper = np.clip(expected_rewards + ci, 0, None)
+        lower = expected_cost -ci
+
+        ratio = upper / (lower+ self.gamma)
         return np.argmax(ratio)
 
     def update(self, reward, cost, chosen_arm, context):

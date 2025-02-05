@@ -19,8 +19,8 @@ class LinFirst:
         if self.exploration_budget > 0:
             return np.random.choice(self.n_arms)
         else:
-            expected_rewards = np.array([np.clip(np.dot(self.theta_hat[a], context), self.gamma, 1) for a in range(self.n_arms)])
-            expected_cost = np.array([np.clip(np.dot(self.theta_hat_c[a], context), self.gamma, 1) for a in range(self.n_arms)])
+            expected_rewards = np.array([np.clip(np.dot(self.theta_hat[a], context), self.gamma, None) for a in range(self.n_arms)])
+            expected_cost = np.array([np.clip(np.dot(self.theta_hat_c[a], context), self.gamma, None) for a in range(self.n_arms)])
 
             return np.argmax(expected_rewards / expected_cost)
 

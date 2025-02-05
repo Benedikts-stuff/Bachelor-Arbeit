@@ -7,7 +7,8 @@ class SyntheticContext:
         self.num_features = num_features
 
     def sample(self):
-        return np.random.rand(self.num_features)
+        sample = np.random.rand(self.num_features)
+        return sample
 
 
 class FacebookData:

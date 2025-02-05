@@ -2,12 +2,13 @@ import numpy as np
 
 
 
-class cLinCUCB:
-    def __init__(self, n_arms, context_dim):
+class XiaLinCUCB:
+    def __init__(self, n_arms, context_dim, alpha):
         self.n_arms = n_arms
         self.n_features = context_dim
         self.gamma = 1e-8
-        self.arm_counts = np.zeros(self.n_arms)
+        self.alpha = alpha
+        self.arm_counts = np.ones(self.n_arms)
         self.A = np.array([np.identity(self.n_features) for _ in range(self.n_arms)])  # Covariance matrices for each arm
         self.b = np.zeros((self.n_arms, self.n_features))  # Linear predictors for each arm
         self.theta_hat = np.zeros((self.n_arms, self.n_features))  # Estimated theta for each arm (for debugging)
@@ -18,19 +19,14 @@ class cLinCUCB:
 
 
     def select_arm(self, context, round):
-        ratio = []
-        for arm in range(self.n_arms):
-            A_inv = np.linalg.inv(self.A[arm])
-            expected_rewards = np.dot(self.theta_hat[arm], context)
-            expected_cost = np.dot(self.theta_hat_c[arm], context)
-            uncertainty = context.dot(A_inv).dot(context)
-            ci = (1 + np.sqrt(np.log(2 * (round + 1)) / 2)) * np.sqrt(uncertainty)
+        A_inv = np.array([np.linalg.inv(self.A[a]) for a in range(self.n_arms)])
+        expected_rewards = np.array([np.dot(self.theta_hat[a], context) for a in range(self.n_arms)])
+        expected_cost = np.array([np.dot(self.theta_hat_c[a], context) for a in range(self.n_arms)])
+        epsilon_r = np.array([self.alpha * np.sqrt(np.log(round+1)/ self.arm_counts[arm]) for arm in range(self.n_arms)])
 
-            upper = expected_rewards + ci
-            lower = np.clip(expected_cost, self.gamma, None)
+        index = expected_rewards/(expected_cost+ self.gamma) + epsilon_r/(expected_cost + self.gamma)
 
-            ratio.append(upper / lower)
-        return np.argmax(ratio)
+        return np.argmax(index)
 
     def update(self, reward, cost, chosen_arm, context):
         self.A[chosen_arm] += np.outer(context, context)

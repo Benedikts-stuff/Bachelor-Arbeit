@@ -2,7 +2,6 @@ import numpy as np
 import torch
 import random
 import multiprocess as mp
-from sympy import bernoulli
 
 from logger import Logger
 
@@ -39,7 +38,6 @@ class Runner:
         self.get_cost.reinitialize_weights(seed+42)
 
         while budget > 0:
-            print(round_num)
             context = self.generator.sample()
             action = bandit.select_arm(context, round_num)
             reward = self.get_reward(context, round_num)
@@ -50,8 +48,9 @@ class Runner:
             else:
                 bandit.update(reward[action], cost[action], action, context)
 
-            optimal_reward =  np.max(np.array(reward)/(np.array(cost)+gamma))
-            regret = np.clip(optimal_reward - reward[action]/(cost[action]+gamma), 0, 1)
+            ratio = reward[action]/(cost[action]+gamma)
+            optimal_ratio =  np.max(np.array(reward)/(np.array(cost)+gamma))
+            regret = np.clip(optimal_ratio - ratio, 0, 1)
             cumulative_regret += regret
             normalized_used_budget = (self.B-budget) / self.B
 

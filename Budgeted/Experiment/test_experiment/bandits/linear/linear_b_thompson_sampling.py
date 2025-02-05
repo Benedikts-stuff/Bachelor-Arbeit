@@ -27,8 +27,8 @@ class ThompsonSampling:
         theta_hat_r = self.sample_mu(self.mu_hat)
         theta_hat_c = self.sample_mu(self.mu_hat_c)
 
-        rewards = np.clip(np.array([np.dot(theta_hat_r[arm], context) for arm in range(self.n_arms)]), 0, 1)
-        cost = np.clip(np.array([np.dot(theta_hat_c[arm], context) for arm in range(self.n_arms)]), self.gamma, 1)
+        rewards = np.clip(np.array([np.dot(theta_hat_r[arm], context) for arm in range(self.n_arms)]), 0, None)
+        cost = np.clip(np.array([np.dot(theta_hat_c[arm], context) for arm in range(self.n_arms)]), self.gamma, None)
 
         return np.argmax(rewards /cost)
 

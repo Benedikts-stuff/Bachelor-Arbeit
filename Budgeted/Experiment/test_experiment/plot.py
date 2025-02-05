@@ -6,7 +6,15 @@ import seaborn as sns
 
 def interp_plot(csv_path, x_col="normalized_used_budget", y_col="cumulative_regret"):
     # Lese die CSV-Datei ein
-    df = pd.read_csv(csv_path)
+    df = pd.read_csv(csv_path, header=0, dtype ={
+            "algorithm": "string",
+            "round": "int64",
+            "reward": "float64",
+            "cumulative_regret": "float64",
+            "normalized_used_budget": "float64",
+            "run_index": "int64",
+            "seed": "int64"
+        })
 
     # Konvertiere Spalten in float und entferne ungültige Werte
     df[x_col] = pd.to_numeric(df[x_col], errors="coerce")
@@ -33,23 +41,30 @@ def interp_plot(csv_path, x_col="normalized_used_budget", y_col="cumulative_regr
         # Konvertiere Liste in NumPy-Array für einfachere Berechnung
         interpolated_runs = np.array(interpolated_runs)
 
-        # Berechne Mittelwert und statistische Werte
+        # Berechne Mittelwert und Standardabweichung über die Runs
         midy = np.mean(interpolated_runs, axis=0)
-        q25 = np.percentile(interpolated_runs, 25, axis=0)
-        q75 = np.percentile(interpolated_runs, 75, axis=0)
         std = np.std(interpolated_runs, axis=0)
-        ci_lower = np.percentile(interpolated_runs, 25, axis=0)
-        ci_upper = np.percentile(interpolated_runs, 75, axis=0)
+
+        # Anzahl der Runs
+        n = interpolated_runs.shape[0]
+
+        # Berechne den Standardfehler
+        se = std / np.sqrt(n)
+
+        # Berechne das 95%-Konfidenzintervall
+        ci_lower = midy - 1.96 * se
+        ci_upper = midy + 1.96 * se
+
+        # Optional: max-Wert (Summed) je Run berechnen und auffüllen, falls benötigt
         summed = [np.max(regret) for regret in interpolated_runs]
+        summed = np.pad(summed, (0, len(new_axis_xs) - len(summed)), mode='constant', constant_values=np.nan)
 
         # Speichere Ergebnisse für diesen Algorithmus
         results.append(pd.DataFrame({
             "algorithm": algo,
             x_col: new_axis_xs,
             y_col: midy,
-            "summed": np.pad(summed, (0, len(new_axis_xs) - len(summed)), mode='constant', constant_values=np.nan),
-            "q25": q25,
-            "q75": q75,
+            "summed": summed,
             "std": std,
             "ci_lower": ci_lower,
             "ci_upper": ci_upper
@@ -57,7 +72,6 @@ def interp_plot(csv_path, x_col="normalized_used_budget", y_col="cumulative_regr
 
     # Kombiniere Ergebnisse aller Algorithmen
     final_df = pd.concat(results, ignore_index=True)
-
     return final_df
 
 
@@ -113,7 +127,7 @@ def plot_budget_normalised_regret(plot_data, color_mapping):
     plt.grid(True, axis='y', linestyle='--', alpha=0.7)  # Füge ein Gitter hinzu
 
     # Speichere den Plot als PDF
-    plt.savefig("cumulative_regret_linear.pdf", dpi=300)  # Höhere Auflösung für bessere Qualität
+    plt.savefig("./plots/cumulative_regret_base_linear_group1.pdf", dpi=300)  # Höhere Auflösung für bessere Qualität
     plt.show()  # Zeige den Plot an
 
 
@@ -129,7 +143,7 @@ def plot_violin_regret(plot_data, color_mapping):
 
     # Erstelle den Violin-Plot
     sns.violinplot(x="algorithm", y="summed", data=plot_data, inner="quart",
-                   palette=color_mapping, scale="area", cut=0)
+                   palette=color_mapping, scale="area", cut=0, )
 
     # Setze Titel und Labels
     plt.ylabel(r"Cumulative Regret", fontsize=14, labelpad=15)
@@ -139,15 +153,9 @@ def plot_violin_regret(plot_data, color_mapping):
     plt.xticks(rotation=45, ha="right", fontsize=12)
     plt.yticks(fontsize=12)
     plt.grid(True, axis='y', linestyle='--', alpha=0.7)
+    plt.ylim(0, 1100)
     plt.tight_layout()
 
     # Speichere den Plot als PDF
-    plt.savefig("violin_plot_regret.pdf", dpi=300)
+    plt.savefig("./plots/violin_plot_regret_base_linear_group1.pdf", dpi=300)
     plt.show()
-
-
-# Erstelle eine Farbzuordnung für die Algorithmen
-plot_data = interp_plot("experiment_logs.csv")
-color_mapping = create_global_color_mapping(plot_data["algorithm"].unique())
-plot_budget_normalised_regret(plot_data, color_mapping)
-plot_violin_regret(plot_data, color_mapping)
