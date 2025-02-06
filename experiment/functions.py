@@ -1,6 +1,6 @@
 import numpy as np
 
-from test_experiment.data.process_data import PreProcessData
+from experiment.data.process_data import PreProcessData
 
 
 def normalize_weights(weights):

@@ -1,16 +1,16 @@
-from test_experiment.bandits.linear.fixed_lin_ucb_tor import FixedTorLinUCB
-from test_experiment.bandits.exp4 import EXP4
-from test_experiment.bandits.non_linear.beta_gp_thompson_sampling import Beta_GPTS
-from test_experiment.bandits.non_linear.budgeted_gp_ucb import GPUCB
-from test_experiment.bandits.non_linear.gp_b_thompson_sampling import GPTS
-from test_experiment.bandits.non_linear.gp_omega_ucb import GPWUCB
-from test_experiment.bandits.non_linear.nerual_omega_ucb import NeuralOmegaUCB
-from test_experiment.bandits.non_linear.neural_greedy import NeuralGreedy
+from experiment.bandits.linear.fixed_lin_ucb_tor import FixedTorLinUCB
+from experiment.bandits.exp4 import EXP4
+from experiment.bandits.non_linear.beta_gp_thompson_sampling import Beta_GPTS
+from experiment.bandits.non_linear.budgeted_gp_ucb import GPUCB
+from experiment.bandits.non_linear.gp_b_thompson_sampling import GPTS
+from experiment.bandits.non_linear.gp_omega_ucb import GPWUCB
+from experiment.bandits.non_linear.nerual_omega_ucb import NeuralOmegaUCB
+from experiment.bandits.non_linear.neural_greedy import NeuralGreedy
 
 from functions import *
 from executor import Executor
-from test_experiment.data.context import *
-from test_experiment.plot import *
+from experiment.data.context import *
+from experiment.plot import *
 import os
 
 if __name__ == "__main__":

@@ -13,7 +13,7 @@ class SyntheticContext:
 
 class FacebookData:
     def __init__(self, num_features):
-        pre_processor =  PreProcessData("../test_experiment/data/facebook-ad-campaign-data.csv")
+        pre_processor =  PreProcessData("../experiment/data/facebook-ad-campaign-data.csv")
         self.kde = pre_processor.get_kde()
 
     def sample(self):
