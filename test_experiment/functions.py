@@ -1,6 +1,6 @@
 import numpy as np
 
-from Budgeted.Experiment.test_experiment.data.process_data import PreProcessData
+from test_experiment.data.process_data import PreProcessData
 
 
 def normalize_weights(weights):
@@ -113,7 +113,7 @@ class Stochastic:
 class AddDataReward:
     def __init__(self, n_arms):
         self.n_arms = n_arms
-        pre_processor =  PreProcessData("../test_experiment/data/facebook-ad-campaign-data.csv")
+        pre_processor =  PreProcessData("/data/facebook-ad-campaign-data.csv")
         self.models = pre_processor.train_gp_models_reward()
 
     def __call__(self, context, round):
@@ -126,7 +126,7 @@ class AddDataReward:
 class AddDataCost:
     def __init__(self, n_arms):
         self.n_arms = n_arms
-        pre_processor =  PreProcessData("../test_experiment/data/facebook-ad-campaign-data.csv")
+        pre_processor =  PreProcessData("/data/facebook-ad-campaign-data.csv")
         self.models = pre_processor.train_gp_models_cost()
 
     def __call__(self, context, round):
