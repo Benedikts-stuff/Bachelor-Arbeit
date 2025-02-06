@@ -28,10 +28,10 @@ class TorLinCUCB:
 
         ci = alpha
 
-        upper = np.clip(expected_rewards + ci, 0, None)
-        lower = np.clip(expected_cost, self.gamma, None)
+        upper = expected_rewards + ci
+        lower = expected_cost
 
-        ratio = upper / lower
+        ratio = upper / (lower + self.gamma)
         return np.argmax(ratio)
 
     def update(self, reward, cost, chosen_arm, context):

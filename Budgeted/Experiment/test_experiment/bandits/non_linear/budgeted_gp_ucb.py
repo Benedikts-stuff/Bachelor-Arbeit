@@ -67,7 +67,7 @@ class GPUCB:
         self.arm_cost[chosen_arm].append(cost)
         self.arm_counts[chosen_arm] +=1
 
-        if sum(len(v) for v in self.arm_contexts) < 300:
+        if sum(len(v) for v in self.arm_contexts) < 500:
             self.gps[chosen_arm].fit(
                 np.array(self.arm_contexts[chosen_arm]),
                 np.array(self.arm_rewards[chosen_arm])

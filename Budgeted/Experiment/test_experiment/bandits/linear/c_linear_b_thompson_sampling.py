@@ -26,10 +26,10 @@ class CThompsonSampling:
     def select_arm(self, context, round):
         theta_hat_r = self.sample_mu(self.mu_hat)
 
-        rewards = np.clip(np.array([np.dot(theta_hat_r[arm], context) for arm in range(self.n_arms)]), 0, None)
-        cost = np.clip(np.array([np.dot(self.mu_hat_c[arm], context) for arm in range(self.n_arms)]), self.gamma, None)
+        rewards = np.array([np.dot(theta_hat_r[arm], context) for arm in range(self.n_arms)])
+        cost = np.array([np.dot(self.mu_hat_c[arm], context) for arm in range(self.n_arms)])
 
-        return np.argmax(rewards /cost)
+        return np.argmax(rewards /(cost + self.gamma))
 
 
     def update(self, reward, cost, chosen_arm, context):

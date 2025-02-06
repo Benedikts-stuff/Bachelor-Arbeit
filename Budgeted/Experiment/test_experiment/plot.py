@@ -6,15 +6,17 @@ import seaborn as sns
 
 def interp_plot(csv_path, x_col="normalized_used_budget", y_col="cumulative_regret"):
     # Lese die CSV-Datei ein
-    df = pd.read_csv(csv_path, header=0, dtype ={
-            "algorithm": "string",
-            "round": "int64",
-            "reward": "float64",
-            "cumulative_regret": "float64",
-            "normalized_used_budget": "float64",
-            "run_index": "int64",
-            "seed": "int64"
-        })
+    df = pd.read_csv(csv_path, header=0)
+    print(df.dtypes)
+    print(df.head())
+    df["cumulative_regret"] = pd.to_numeric(df["cumulative_regret"], errors="coerce", downcast="float")
+    df["normalized_used_budget"] = pd.to_numeric(df["normalized_used_budget"], errors="coerce", downcast="float")
+    df["round"] = pd.to_numeric(df["round"], errors="coerce", downcast="integer")
+    df["run_index"] = pd.to_numeric(df["run_index"], errors="coerce", downcast="integer")
+    df["seed"] = pd.to_numeric(df["seed"], errors="coerce", downcast="integer")
+
+    print(df.dtypes)
+    print(df.head())
 
     # Konvertiere Spalten in float und entferne ungültige Werte
     df[x_col] = pd.to_numeric(df[x_col], errors="coerce")
@@ -122,12 +124,12 @@ def plot_budget_normalised_regret(plot_data, color_mapping):
     # Setze Achsenbeschriftungen und -grenzen
     plt.xlabel("Normalized Spent Budget", fontsize=14)
     plt.ylabel("Cumulative Regret", fontsize=14)
-    plt.ylim(0, y_lim)  # Setze die y-Achsenbegrenzung
+    #plt.ylim(0, 20)  # Setze die y-Achsenbegrenzung
     plt.legend(fontsize=12)  # Zeige die Legende an
     plt.grid(True, axis='y', linestyle='--', alpha=0.7)  # Füge ein Gitter hinzu
 
     # Speichere den Plot als PDF
-    plt.savefig("./plots/cumulative_regret_base_linear_group1.pdf", dpi=300)  # Höhere Auflösung für bessere Qualität
+    #plt.savefig("./plots/cumulative_regret_base_non_linear_group1.pdf", dpi=300)  # Höhere Auflösung für bessere Qualität
     plt.show()  # Zeige den Plot an
 
 
@@ -153,9 +155,9 @@ def plot_violin_regret(plot_data, color_mapping):
     plt.xticks(rotation=45, ha="right", fontsize=12)
     plt.yticks(fontsize=12)
     plt.grid(True, axis='y', linestyle='--', alpha=0.7)
-    plt.ylim(0, 1100)
+    #plt.ylim(0, 400)
     plt.tight_layout()
 
     # Speichere den Plot als PDF
-    plt.savefig("./plots/violin_plot_regret_base_linear_group1.pdf", dpi=300)
+   # plt.savefig("./plots/violin_plot_regret_base_non_linear_group1.pdf", dpi=300)
     plt.show()

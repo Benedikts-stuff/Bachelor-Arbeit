@@ -41,8 +41,9 @@ class NonLinear:
         self.weights = normalize_weights(self.weights)
 
     def __call__(self, context, round):
-        value =  -(np.dot(self.weights, context) - 0.5)**2  +0.5
-        return value
+        dot_product = np.dot(self.weights, context)
+        value = 0.5 + 0.4 * np.sin(5 * dot_product) - 0.1 * (dot_product ** 2)
+        return np.clip(value, 0, 1)
 
     def reinitialize_weights(self, seed):
         np.random.seed(seed)

@@ -22,13 +22,12 @@ class LinUCB:
         expected_rewards = np.array([np.dot(self.theta_hat[a], context) for a in range(self.n_arms)])
         expected_cost = np.array([np.dot(self.theta_hat_c[a], context) for a in range(self.n_arms)])
         uncertainty = np.array([context.dot(A_inv[i]).dot(context)for i in range(self.n_arms)])
-        delta = 1 / ((round + 1)*np.log(round+1) +1)
-        ci = (1 + np.sqrt(np.log(2/delta) / 2)) * np.sqrt(uncertainty)
+        ci = (1 + np.sqrt(np.log(2 * (round+1)) / 2)) * np.sqrt(uncertainty)
 
         upper = expected_rewards + ci
-        lower = np.clip(expected_cost - ci, self.gamma, None)
+        lower = expected_cost - ci
 
-        ratio = upper/lower
+        ratio = upper/(lower + self.gamma)
         return np.argmax(ratio)
 
     def update(self, reward, cost, chosen_arm, context):

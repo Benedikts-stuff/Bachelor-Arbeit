@@ -21,10 +21,10 @@ class LinGreedy:
         if np.random.rand() < epsilon:
             return np.random.choice(self.n_arms)
         else:
-            expected_rewards = np.array([np.clip(np.dot(self.theta_hat[a], context), 0, None) for a in range(self.n_arms)])
-            expected_cost = np.array([np.clip(np.dot(self.theta_hat_c[a], context), self.gamma, None) for a in range(self.n_arms)])
+            expected_rewards = np.array([np.dot(self.theta_hat[a], context) for a in range(self.n_arms)])
+            expected_cost = np.array([np.dot(self.theta_hat_c[a], context) for a in range(self.n_arms)])
 
-            return np.argmax(expected_rewards / expected_cost)
+            return np.argmax(expected_rewards / (expected_cost+self.gamma))
 
     def update(self, reward, cost, chosen_arm, context):
         self.B[chosen_arm] += np.outer(context, context)

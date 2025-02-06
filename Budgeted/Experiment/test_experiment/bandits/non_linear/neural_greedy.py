@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset
-from .models.neural import SingleArmNetwork
+from .models.neural import SingleArmNetwork as SingleArmNetwork
 
 
 class NeuralGreedy:
@@ -43,11 +43,10 @@ class NeuralGreedy:
             context_tensor.requires_grad = True
 
             # Vorhersagen für Belohnungen und Kosten
-            reward = np.array([np.clip(self.models[t](context_tensor).detach().numpy().squeeze(0), 0, None) for t in range(self.n_arms)])
-            cost = np.array([np.clip(self.models_c[t](context_tensor).detach().numpy().squeeze(0), self.gamma, None) for t in range(self.n_arms)])
-            print("guessed: ", reward)
-            # Arm mit dem besten Verhältnis von Belohnung zu Kosten auswählen
-            arm = np.argmax(reward / cost)
+            reward = np.array([self.models[t](context_tensor).detach().numpy().squeeze(0)  for t in range(self.n_arms)])
+            cost = np.array([self.models_c[t](context_tensor).detach().numpy().squeeze(0)  for t in range(self.n_arms)])
+            print("guess: ", reward)
+            arm = np.argmax(reward / (cost+self.gamma))
 
         self.contexts_seen[arm].append(context)
         return arm
@@ -58,7 +57,7 @@ class NeuralGreedy:
         self.rewards_seen[chosen_arm].append(actual_reward)
         self.costs_seen[chosen_arm].append(actual_cost)
 
-        if sum(len(v) for v in self.contexts_seen) < 1000:
+        if sum(len(v) for v in self.contexts_seen) < 3000:
             self.update_parameters_reward(chosen_arm, self.contexts_seen[chosen_arm], self.rewards_seen[chosen_arm])
 
             self.update_parameters_cost(chosen_arm,  self.contexts_seen[chosen_arm], self.costs_seen[chosen_arm])
@@ -71,7 +70,7 @@ class NeuralGreedy:
         scaled_rewards = [r * scale_factor for r in rewards]
 
         # Dynamische Batch-Größe (maximal 256)
-        batch_size = min(len(contexts), 256)
+        batch_size = min(len(contexts), 48)
 
         # Erstelle ein Dataset und DataLoader
         dataset = TensorDataset(torch.DoubleTensor(contexts), torch.DoubleTensor(scaled_rewards))
@@ -106,11 +105,16 @@ class NeuralGreedy:
         scheduler.step()
 
     def update_parameters_cost(self, action, contexts, costs):
+        scale_factor = 1
+
+        # Skalierte Rewards für das Training
+        scaled_costs = [r * scale_factor for r in costs]
+
         # Dynamische Batch-Größe (z. B. bis zu 256, aber nicht mehr als die Anzahl der Contexts)
-        batch_size = min(len(contexts), 256)  # Erhöhe die Batch-Größe für stabilere Gradienten
+        batch_size = min(len(contexts), 48)  # Erhöhe die Batch-Größe für stabilere Gradienten
 
         # Erstelle ein Dataset und DataLoader
-        dataset = TensorDataset(torch.DoubleTensor(contexts), torch.DoubleTensor(costs))
+        dataset = TensorDataset(torch.DoubleTensor(contexts), torch.DoubleTensor(scaled_costs))
         dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
         # Hole das Modell und den Optimizer für die gegebene Aktion

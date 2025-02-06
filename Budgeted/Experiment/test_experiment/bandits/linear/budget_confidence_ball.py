@@ -6,7 +6,7 @@ class BudgetCB:
         self.gamma = 1e-8
         self.n_arms = n_arms
         self.rho = 2 # basic = 1
-        self.delta =1/budget  # Confidence parameter can be set as 1/B where B is budget
+        self.delta = 1/budget #budget  # Confidence parameter can be set as 1/B where B is budget
         self.L = 5  # Bound on \|context\|_2
         self.S = 1  # Bound on \|theta\|_2
         self.C = 0.001 #0.001 und 0.005 gut

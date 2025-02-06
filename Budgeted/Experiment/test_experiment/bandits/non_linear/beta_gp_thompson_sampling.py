@@ -52,10 +52,10 @@ class Beta_GPTS:
             scale_c = np.clip(1/gain_c, 1.0, self.arm_counts[arm])
 
             # Kombinieren von Mean und Bonus (hier als Beispiel Beta-Verteilung, ähnlich wie dein Ansatz)
-            sampled_reward = np.clip(np.random.beta(scale *self.arm_counts[arm] * mu,
-                                            scale * self.arm_counts[arm] * (1-mu)), self.gamma, 1-self.gamma)
-            sampled_cost = np.clip(np.random.beta(scale_c * self.arm_counts[arm] * mu_c,
-                                            scale_c * self.arm_counts[arm] * (1-mu_c)), self.gamma, 1-self.gamma)
+            sampled_reward = np.random.beta(np.clip(scale *self.arm_counts[arm] * mu, self.gamma, None),
+                                            np.clip(scale * self.arm_counts[arm] * (1-mu),self.gamma,None))
+            sampled_cost = np.random.beta(np.clip(scale_c * self.arm_counts[arm] * mu_c, self.gamma, None),
+                                            np.clip(scale_c * self.arm_counts[arm] * (1-mu_c), self.gamma, None))
 
             rewards.append(sampled_reward)
             costs.append(sampled_cost)

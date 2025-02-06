@@ -1,5 +1,8 @@
+from Budgeted.Experiment.test_experiment.bandits.linear.lin_c_UCB import cLinCUCB
 from Budgeted.Experiment.test_experiment.bandits.linear.lin_ucb import LinUCB
-from Budgeted.Experiment.test_experiment.bandits.linear.lin_c_UCB import LinCUCB
+from Budgeted.Experiment.test_experiment.bandits.linear.fixed_lin_ucb import FixedLinUCB
+from Budgeted.Experiment.test_experiment.bandits.linear.fixed_tor_lin_c_ucb import FixedTorLinCUCB
+from Budgeted.Experiment.test_experiment.bandits.linear.fixed_lin_ucb_tor import FixedTorLinUCB
 from Budgeted.Experiment.test_experiment.bandits.linear.linear_b_thompson_sampling import ThompsonSampling
 from Budgeted.Experiment.test_experiment.bandits.linear.lin_ucb_tuned import TunedLinUCB
 from Budgeted.Experiment.test_experiment.bandits.exp4 import EXP4
@@ -61,21 +64,26 @@ if __name__ == "__main__":
     use_bernoulli = False
 
     ranges_greedy = [0.001, 0.005, 0.01] # 0.001 oder 1/B
-    range_first = [0.6,0.7,0.8, 0.9,1] # 0.001
-    ranges_xia = [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5] #0.1
+    range_first = [0.7, 0.8, 0.9, 1, 1.2] # 0.001
+    ranges_xia = [0.2, 0.4, 0.8,1.0, 1.5, 2.0,3.0,4.0 ] #0.1
     ranges_omega = [0.001,0.005, 0.01, 0.05, 0.1, 0.15, 0.2,0.25, 0.3, 0.35]
-    ranges_thompson = [0.00001, 0.00005, 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.15] # 0.01
+    ranges_thompson = [0.001, 0.005, 0.01, 0.05, 0.1, 0.15, ] # 0.01
     ranges_beta_thompson = [ 500, 800, 1000, 2000, 10000]
 
     param_ranges = {
         #"LinGreedy": ranges_greedy,
         #"LinFirst": range_first,
-        "LinUCB Tor": range_first,
+        #"Fixxed LinCUCB Tor": range_first,
+        #"Fixxed LinUCB": range_first,
         #"XiaLinCUCB": ranges_xia,
         #"LinOmegaUCB": ranges_omega,
         #"ThompsonSampling": ranges_thompson,
         #"betaThompsonSampling": ranges_beta_thompson,
         #"CThompsonSampling": ranges_thompson,
+        #"budget CB": ranges_xia,
+        #"LinUCB": ranges_xia,
+        "LinUCB Tor": ranges_xia,
+        #"c-LinUCB": ranges_xia,
     }
 
     logs = {}
@@ -87,7 +95,7 @@ if __name__ == "__main__":
         os.remove("grid_search_logs.csv")
 
 
-    for i in range(5):
+    for i in range(8):
         linear = [
             #("LinGreedy", LinGreedy, {"context_dim": 5, "n_arms": 3, "epsilon": ranges_greedy[i]}), #0.001 oder 1/B
             #("LinFirst", LinFirst, {"context_dim": 5, "n_arms": 3, "epsilon": range_first[i], "budget": budget}), # 0.001
@@ -96,14 +104,28 @@ if __name__ == "__main__":
             #("ThompsonSampling", ThompsonSampling, {"context_dim": 5, "n_arms": 3, "v": ranges_thompson[i]}), # 0.001
             #("betaThompsonSampling", BetaThompsonSampling, {"context_dim": 5, "n_arms": 3, "s": ranges_beta_thompson[i]}), # 2000
             #("CThompsonSampling", CThompsonSampling, {"context_dim": 5, "n_arms": 3, "v": ranges_thompson[i]}), #0.01
-            #("LinUCB Tor", TorLinUCB, {"context_dim": 5, "n_arms": 3, "budget": budget, "delta":range_first[i] }), #0.9
+            #("Fixxed LinCUCB Tor", FixedTorLinCUCB, {"context_dim": 5, "n_arms": 3, "delta":range_first[i] }), #2
+            #("Fixxed LinUCB", FixedTorLinUCB, {"context_dim": 5, "n_arms": 3, "delta": range_first[i]}),  # 0.8
 
         ]
+
+        linear2_optimized = [
+            #("budget CB", BudgetCB, {"context_dim": 5, "n_arms": 3, "budget": ranges_xia[i]}), 12
+            # ("Random", Random_Bandit, {"context_dim": 5, "n_arms": 3}),
+            #("LinUCB", FixedLinUCB, {"context_dim": 5, "n_arms": 3, "delta": ranges_xia[i]}), # 0.8
+            # ("TunedLinUCB", TunedLinUCB, {"context_dim": 5, "n_arms": 3}),
+            ("LinUCB Tor", FixedTorLinUCB, {"context_dim": 5, "n_arms": 3, "delta": ranges_xia[i]}), # 0.8
+            #("c-LinUCB", cLinCUCB, {"context_dim": 5, "n_arms": 3, "delta": ranges_xia[i]}), #2
+            # ("AdvThompsonSampling", AdvThompsonSampling, {"context_dim": 5, "n_arms": 3, "v": 0.1}),
+        ]
+
+        if os.path.exists("results_grid_search.csv"):
+            os.remove("results_grid_search.csv")
 
         if os.path.exists("grid_search_logs.csv"):
             os.remove("grid_search_logs.csv")
 
-        executor = Executor(linear, reward_function, cost_function, context,
+        executor = Executor(linear2_optimized, reward_function, cost_function, context,
                             n_features=5, n_runs=30, b=budget, filename=filename, bernoulli=use_bernoulli)
         executor.run_all()
 

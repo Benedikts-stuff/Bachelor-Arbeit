@@ -23,7 +23,7 @@ class FixedTorLinUCB:
         expected_rewards = np.array([np.dot(self.theta_hat[a], context) for a in range(self.n_arms)])
         expected_cost = np.array([np.dot(self.theta_hat_c[a], context) for a in range(self.n_arms)])
         a= (round + 1)*np.log(round+1) +1
-        alpha = np.sqrt(np.clip(2 * np.log(1/self.delta) / self.arm_counts, 0, None))
+        alpha = np.sqrt(np.clip(2 * np.log(a) / self.arm_counts, 0, None))
 
         ci = alpha
 

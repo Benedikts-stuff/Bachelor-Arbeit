@@ -26,7 +26,7 @@ class TorLinUCB:
 
         ci = alpha
 
-        upper = np.clip(expected_rewards + ci, 0, None)
+        upper = expected_rewards + ci
         lower = expected_cost -ci
 
         ratio = upper / (lower+ self.gamma)
