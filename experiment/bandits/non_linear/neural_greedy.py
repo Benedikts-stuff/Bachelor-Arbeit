@@ -44,20 +44,21 @@ class NeuralGreedy:
 
             # Vorhersagen für Belohnungen und Kosten
             reward = np.array([self.models[t](context_tensor).detach().numpy().squeeze(0)  for t in range(self.n_arms)])
-            cost = np.array([self.models_c[t](context_tensor).detach().numpy().squeeze(0)  for t in range(self.n_arms)])
             print("guess: ", reward)
+            cost = np.array([self.models_c[t](context_tensor).detach().numpy().squeeze(0)  for t in range(self.n_arms)])
             arm = np.argmax(reward / (cost+self.gamma))
 
-        self.contexts_seen[arm].append(context)
+
         return arm
 
     def update(self, actual_reward, actual_cost, chosen_arm, context):
         self.arm_counts[chosen_arm] +=1
 
+        self.contexts_seen[chosen_arm].append(context)
         self.rewards_seen[chosen_arm].append(actual_reward)
         self.costs_seen[chosen_arm].append(actual_cost)
 
-        if sum(len(v) for v in self.contexts_seen) < 3000:
+        if sum(len(v) for v in self.contexts_seen) < 1000:
             self.update_parameters_reward(chosen_arm, self.contexts_seen[chosen_arm], self.rewards_seen[chosen_arm])
 
             self.update_parameters_cost(chosen_arm,  self.contexts_seen[chosen_arm], self.costs_seen[chosen_arm])

@@ -9,6 +9,7 @@ class GPUCB:
         self.gamma = gamma
         self.delta = 1e-8
         self.beta_t = 1
+        self.context_dim = context_dim
 
         self.kernels = [C(1.0, (1e-3, 1e3)) *RBF(length_scale=0.05, length_scale_bounds=(1e-5, 2)) for _ in range(n_arms)]
         self.gps = [
@@ -36,8 +37,9 @@ class GPUCB:
         ucb_values = []
         for arm_id in range(self.n_arms):
             mu, sigma = self.gps[arm_id].predict(context.reshape(1, -1), return_std=True)
-            beta = 2 * np.log(self.arm_counts[arm_id] * ((round+1)**2) * np.pi ** 2 / (6 * self.gamma))
-            ucb = np.clip(mu + (np.sqrt(beta / 5) * sigma), 0, 1)
+            #beta = 2 * np.log(self.arm_counts[arm_id] * ((round+1)**2) * np.pi ** 2 / (6 * self.gamma))
+            beta = 2 * np.log(self.context_dim * round**2 * np.pi**2 * 1/(6*0.1))
+            ucb = mu + np.sqrt(beta) * sigma
             ucb_values.append(ucb[0])
 
         return np.array(ucb_values)
@@ -46,9 +48,10 @@ class GPUCB:
         lcb_values = []
         for arm_id in range(self.n_arms):
             mu, sigma = self.gps_c[arm_id].predict(context.reshape(1, -1), return_std=True)
-            beta = 2 * np.log(self.arm_counts[arm_id] * ((round+1) ** 2) * np.pi ** 2 / (6 * self.gamma))
-            lcb = np.clip(mu - (np.sqrt(beta / 5) * sigma), self.delta, 1)
-            lcb_values.append(lcb[0])
+            #beta = 2 * np.log(self.arm_counts[arm_id] * ((round+1) ** 2) * np.pi ** 2 / (6 * self.gamma))
+            beta = 2 * np.log(self.context_dim * round**2 * np.pi**2 * 1/(6*0.1))
+            lcb = mu - np.sqrt(beta) * sigma
+            lcb_values.append(lcb[0] + self.gamma)
 
         return np.array(lcb_values)
 

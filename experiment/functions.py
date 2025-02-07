@@ -113,11 +113,11 @@ class Stochastic:
 class AddDataReward:
     def __init__(self, n_arms):
         self.n_arms = n_arms
-        pre_processor =  PreProcessData("/data/facebook-ad-campaign-data.csv")
+        pre_processor =  PreProcessData("./data/facebook-ad-campaign-data.csv")
         self.models = pre_processor.train_gp_models_reward()
 
     def __call__(self, context, round):
-        value = [np.clip(self.models[arm].predict(context.reshape(1, -1), return_std=False), 1e-8, None)[0] for arm in range(self.n_arms)]
+        value = [np.clip(self.models[arm].predict(context.reshape(1, -1), return_std=False), 1e-8, 0.001)[0] * 1000 for arm in range(self.n_arms)]
         return value
 
     def reinitialize_weights(self, seed):
@@ -126,11 +126,11 @@ class AddDataReward:
 class AddDataCost:
     def __init__(self, n_arms):
         self.n_arms = n_arms
-        pre_processor =  PreProcessData("/data/facebook-ad-campaign-data.csv")
+        pre_processor =  PreProcessData("./data/facebook-ad-campaign-data.csv")
         self.models = pre_processor.train_gp_models_cost()
 
     def __call__(self, context, round):
-        value = [np.clip(self.models[arm].predict(context.reshape(1, -1), return_std=False), 1e-8, None)[0] for arm in range(self.n_arms)]
+        value = [np.clip(self.models[arm].predict(context.reshape(1, -1), return_std=False), 1e-8, 0.001)[0] * 1000 for arm in range(self.n_arms)]
         return value
 
     def reinitialize_weights(self, seed):

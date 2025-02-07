@@ -22,6 +22,7 @@ class Runner:
 
     def _run_bandit(self, args):
         seed, run_index = args
+        print("seed: ", seed)
         torch.manual_seed(seed)
         np.random.seed(seed)
         random.seed(seed)
@@ -42,7 +43,6 @@ class Runner:
             action = bandit.select_arm(context, round_num)
             reward = self.get_reward(context, round_num)
             cost = self.get_cost(context, round_num)
-
             if self.bernoulli:
                 bandit.update(np.random.binomial(1, reward[action]), np.random.binomial(1, cost[action]), action, context)
             else:

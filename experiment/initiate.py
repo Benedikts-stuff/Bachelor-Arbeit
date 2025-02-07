@@ -50,7 +50,7 @@ if __name__ == "__main__":
         ("LinUCB", LinUCB, {"context_dim": 5, "n_arms": 3}),
         #("TunedLinUCB", TunedLinUCB, {"context_dim": 5, "n_arms": 3}),
         ("LinUCB Tor", TorLinUCB, {"context_dim": 5, "n_arms": 3, "budget": budget}),
-        ("c-LinUCB", cLinCUCB, {"context_dim": 5, "n_arms": 3}),
+        ("c-LinUCB", cLinCUCB, {"context_dim": 5, "n_arms": 3, "delta": 1}),
         #("AdvThompsonSampling", AdvThompsonSampling, {"context_dim": 5, "n_arms": 3, "v": 0.1}),
     ]
 
@@ -76,11 +76,11 @@ if __name__ == "__main__":
 
     non_linear = [
         (r"Neural $\omega$-UCB", NeuralOmegaUCB, {"context_dim": 5, "n_arms": 3, "p": 0.25}),
-        ("GP UCB", GPUCB, {"context_dim": 5, "n_arms": 3, "gamma": 0.1}),
-        (r"GP $\omega$-UCB", GPWUCB, {"context_dim": 5, "n_arms": 3, "p": 0.25}),
-        ("GP TS", GPTS, {"context_dim": 5, "n_arms": 3, "delta": 0.1}),
-        (r"GP $\beta$-TS", Beta_GPTS, {"context_dim": 5, "n_arms": 3, "delta": 0.1}),
-        ("Neural b-Greedy", NeuralGreedy, {"context_dim": 5, "n_arms": 3, "alpha": 4}),
+        #("GP UCB", GPUCB, {"context_dim": 5, "n_arms": 3, "gamma": 0.1}),
+        #(r"GP $\omega$-UCB", GPWUCB, {"context_dim": 5, "n_arms": 3, "p": 0.25}),
+        #("GP TS", GPTS, {"context_dim": 5, "n_arms": 3, "delta": 0.1}),
+        #(r"GP $\beta$-TS", Beta_GPTS, {"context_dim": 5, "n_arms": 3, "delta": 0.1}),
+        #("Neural b-Greedy", NeuralGreedy, {"context_dim": 5, "n_arms": 3, "alpha": 4}),
 
     ]
 
@@ -91,22 +91,22 @@ if __name__ == "__main__":
     parameter_synthetic = {
         "n_arms": 3,
         "n_features": 5,
-        "a": 1,
-        "b": 1
+        "a": 0.5,
+        "b": 0.5
     }
 
     parameter_fb = {
         "n_arms":3
     }
 
-    reward_function = NonLinear(**parameter_synthetic)
-    cost_function = NonLinear(**parameter_synthetic)
+    reward_function = Linear(**parameter_synthetic)
+    cost_function = Linear(**parameter_synthetic)
     filename = "experiment_logs.csv"
     context = SyntheticContext
     bernoulli = False
 
     executor = Executor(non_linear, reward_function, cost_function, context,
-                        n_features=5, n_runs=1, b=budget, filename=filename, bernoulli=bernoulli)
+                        n_features=5, n_runs=50, b=budget, filename=filename, bernoulli=bernoulli)
     executor.run_all()
 
     plot_data = interp_plot("experiment_logs.csv")

@@ -53,9 +53,9 @@ class LinOmegaUCB:
             A = arm_count + z**2 * eta
             B = 2 * arm_count * mu_r + z**2 * eta
             C = arm_count * mu_r**2
-            x = np.sqrt(np.clip((B**2 / (4 * A**2)) - (C / A), self.gamma, None))
-            omega_r = (B / (2 * A)) - x
-            lower.append(omega_r)
+            x = np.sqrt((B**2 / (4 * A**2)) - (C / A))
+            omega_c = (B / (2 * A)) - x
+            lower.append(np.clip(omega_c, self.gamma, None))
 
         return lower
 
