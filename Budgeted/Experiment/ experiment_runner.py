@@ -59,13 +59,13 @@ class Runner:
         self.budget = budget
         self.normalized_budget_points = np.linspace(0, 1, 100)
         self.epsilon = np.array([4]) #np.array([0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7])
-        self.p =np.array([0.25]) #oder 1 wählen
+        self.p =np.array([0.1]) #oder 1 wählen
         self.gamma= np.array([0.1])
         self.cost_kind = ['continuous', 'bernoulli']
         self.cost_index =cost_index
         self.reward_type = reward_typ
 
-        self.algorithms = ['LinOmegaUCB_CDC', 'NeuralOmegaUCB_CDC']
+        self.algorithms = ['LinOmegaUCB_CDC',  'LinearEpsilonGreedy_CDC']
 
 
     def run_experiment(self):

@@ -125,8 +125,6 @@ class LinUCB_CDC:
 
         #print("true cost weights: ", self.cost_theta, "guesses cost weights: ", self.theta_hat_c)
 
-        self.cum[chosen_arm] += np.random.binomial(1, actual_cost)
-        self.empirical_cost_means[chosen_arm] = self.cum[chosen_arm] / (self.arm_counts[chosen_arm] + 1)
         self.budget -= self.cost[chosen_arm]
 
     def run(self):

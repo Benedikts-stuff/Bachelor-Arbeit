@@ -74,8 +74,8 @@ class EGreedy_CDC:
         while self.budget > self.max_cost:
             context = self.contexts[self.i]
             chosen_arm = self.select_arm(context)
-            reward = np.array(self.reward_fn(context, self.true_weights))
-            costs = np.array(self.cost_fn(context, self.cost_weights))
+            reward = np.array(self.reward_fn(context, self.true_weights, self.i))
+            costs = np.array(self.cost_fn(context, self.cost_weights, self.i))
 
             self.update(reward[chosen_arm], chosen_arm, context, costs[chosen_arm])
             observed_reward = reward[chosen_arm] / costs[chosen_arm]
