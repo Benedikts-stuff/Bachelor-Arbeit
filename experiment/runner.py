@@ -22,7 +22,6 @@ class Runner:
 
     def _run_bandit(self, args):
         seed, run_index = args
-        print("seed: ", seed)
         torch.manual_seed(seed)
         np.random.seed(seed)
         random.seed(seed)
@@ -61,6 +60,7 @@ class Runner:
             round_num += 1
 
         local_logger.save_to_csv()  # Speichert alle gesammelten Logs nach dem Run
+        print(f"finished run {seed} of {self.algo_name}")
 
     def run_experiment(self):
         ctx = mp.get_context('spawn')

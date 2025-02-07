@@ -31,7 +31,6 @@ class NeuralGreedy:
 
     def select_arm(self, context, t):
         if t< self.n_arms:
-            self.contexts_seen[t].append(context)
             return t
 
         epsilon = min(1, self.alpha * (self.n_arms / (t + 1)))
@@ -44,7 +43,6 @@ class NeuralGreedy:
 
             # Vorhersagen für Belohnungen und Kosten
             reward = np.array([self.models[t](context_tensor).detach().numpy().squeeze(0)  for t in range(self.n_arms)])
-            print("guess: ", reward)
             cost = np.array([self.models_c[t](context_tensor).detach().numpy().squeeze(0)  for t in range(self.n_arms)])
             arm = np.argmax(reward / (cost+self.gamma))
 
@@ -58,7 +56,7 @@ class NeuralGreedy:
         self.rewards_seen[chosen_arm].append(actual_reward)
         self.costs_seen[chosen_arm].append(actual_cost)
 
-        if sum(len(v) for v in self.contexts_seen) < 1000:
+        if sum(len(v) for v in self.contexts_seen) < 3000:
             self.update_parameters_reward(chosen_arm, self.contexts_seen[chosen_arm], self.rewards_seen[chosen_arm])
 
             self.update_parameters_cost(chosen_arm,  self.contexts_seen[chosen_arm], self.costs_seen[chosen_arm])

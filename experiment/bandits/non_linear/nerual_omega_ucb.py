@@ -68,7 +68,7 @@ class NeuralOmegaUCB:
         self.rewards_seen[chosen_arm].append(actual_reward)
         self.costs_seen[chosen_arm].append(actual_cost)
 
-        if sum(len(v) for v in self.contexts_seen) < 5000:
+        if sum(len(v) for v in self.contexts_seen) < 3000:
             self.update_parameters_reward(chosen_arm, self.contexts_seen[chosen_arm], self.rewards_seen[chosen_arm])
             self.update_parameters_cost(chosen_arm, self.contexts_seen[chosen_arm], self.costs_seen[chosen_arm])
 

@@ -124,12 +124,12 @@ def plot_budget_normalised_regret(plot_data, color_mapping):
     # Setze Achsenbeschriftungen und -grenzen
     plt.xlabel("Normalized Spent Budget", fontsize=14)
     plt.ylabel("Cumulative Regret", fontsize=14)
-    #plt.ylim(0, 1000)  # Setze die y-Achsenbegrenzung
+    plt.ylim(0, 100)  # Setze die y-Achsenbegrenzung
     plt.legend(fontsize=12)  # Zeige die Legende an
     plt.grid(True, axis='y', linestyle='--', alpha=0.7)  # Füge ein Gitter hinzu
 
     # Speichere den Plot als PDF
-    plt.savefig("./plots/cumulative_regret_base_non_linear_group1_facebook.pdf", dpi=300)  # Höhere Auflösung für bessere Qualität
+    #plt.savefig("./plots/cumulative_regret_base_non_linear_group1_facebook.pdf", dpi=300)  # Höhere Auflösung für bessere Qualität
     plt.show()  # Zeige den Plot an
 
 
@@ -159,5 +159,6 @@ def plot_violin_regret(plot_data, color_mapping):
     plt.tight_layout()
 
     # Speichere den Plot als PDF
-    plt.savefig("./plots/violin_plot_regret_base_non_linear_group1_facebook.pdf", dpi=300)
+    #plt.savefig("./plots/violin_plot_regret_base_non_linear_group1_facebook.pdf", dpi=300)
     plt.show()
+

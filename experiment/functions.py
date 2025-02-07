@@ -29,7 +29,23 @@ class Linear:
         self.weights = normalize_weights(self.weights)
 
 
+class Linear2:
+    def __init__(self, n_arms, n_features, a, b):
+        self.n_arms = n_arms
+        self.a = a
+        self.b = b
+        self.n_features = n_features
+        self.weights = np.array([[0.0001, 0.00887, 0.00232454, 0.00056677, 0.00234],[0.00968, 0.0003429, 0.00439829, 0.00012232, 0.0025664],[0.005466, 0.00999, 0.00234, 0.0005677, 0.000678]])  #np.array([np.random.beta(self.a, self.b, self.n_features) for _ in range(self.n_arms)])
+        #self.weights = normalize_weights(self.weights)
 
+    def __call__(self, context, round):
+        value = np.clip(np.dot(self.weights, context), 1e-8, 1)
+        return value
+
+    def reinitialize_weights(self, seed):
+        np.random.seed(seed)
+        self.weights =np.array([[0.0001, 0.00887, 0.00232454, 0.00056677, 0.00234],[0.00968, 0.0003429, 0.00439829, 0.00012232, 0.0025664],[0.005466, 0.00999, 0.00234, 0.0005677, 0.000678]])# np.array([np.random.beta(self.a, self.b, self.n_features) for _ in range(self.n_arms)])
+        #self.weights = normalize_weights(self.weights)
 
 class NonLinear:
     def __init__(self, n_arms, n_features, a, b):
