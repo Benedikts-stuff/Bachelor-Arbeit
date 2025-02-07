@@ -202,8 +202,8 @@ class NeuralOmegaUCB_CDC:
         progress = tqdm(total=100000, desc="Processing neural_w_ucb", unit="step", ncols=100, position=None)  # Fortschrittsbalken ohne Total
         while self.budget > np.max(self.cost):
             context = self.contexts[i]
-            true_rewards = self.reward_func(context, self.true_theta)
-            cost = self.cost_func(context, self.cost_theta)
+            true_rewards = self.reward_func(context, self.true_theta, i)
+            cost = self.cost_func(context, self.cost_theta, i)
             chosen_arm = self.select_arm(context, i)
             self.arm_counts[chosen_arm] += 1
 

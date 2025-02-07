@@ -65,7 +65,7 @@ class Runner:
         self.cost_index =cost_index
         self.reward_type = reward_typ
 
-        self.algorithms = ['Budget_CB']
+        self.algorithms = ['LinOmegaUCB_CDC', 'NeuralOmegaUCB_CDC']
 
 
     def run_experiment(self):
@@ -293,7 +293,7 @@ class Runner:
 reward_type = ['linear', 'nonlinear']
 cdc = True #context dependent cost
 adversary = False
-runner = Runner(20,reward_type[0], cdc, reward_type[0], 1, adversary=adversary)
+runner = Runner(10,reward_type[0], cdc, reward_type[0], 1, adversary=adversary)
 start_time = time.time()  # Startzeitpunkt
 runner.run_experiment()
 #runner.plot_function()
