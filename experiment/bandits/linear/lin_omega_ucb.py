@@ -22,7 +22,7 @@ class LinOmegaUCB:
             theta_hat = A_inv.dot(self.b[i])
             mu_r = theta_hat.dot(context)
 
-            eta = 1
+            eta = np.dot(context, A_inv).dot(context)/(mu_r*(1-mu_r))
             arm_count = self.arm_counts[i]
             z = np.sqrt(2 * self.p * np.log(round + 2))
 
@@ -42,11 +42,13 @@ class LinOmegaUCB:
         """
         lower = []
         for i in range(self.n_arms):
-            A_inv_c = np.linalg.inv(self.A[i])
-            theta_hat_c = A_inv_c.dot(self.b_c[i])
+            A_inv = np.linalg.inv(self.A[i])
+            theta_hat_c = A_inv.dot(self.b_c[i])
             mu_r = theta_hat_c.dot(context)
 
-            eta = 1
+            eta = np.dot(context, A_inv).dot(context)/(mu_r*(1-mu_r))
+            #eta =1
+
             arm_count = self.arm_counts[i]
             z = np.sqrt(2 * self.p * np.log(round + 2))
 

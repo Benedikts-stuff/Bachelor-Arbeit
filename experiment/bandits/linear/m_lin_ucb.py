@@ -23,7 +23,7 @@ class mLinUCB:
         expected_cost = np.array([np.dot(self.theta_hat_c[a], context) for a in range(self.n_arms)])
         epsilon = np.array([self.alpha * np.sqrt(np.log(round+1)/ self.arm_counts[arm]) for arm in range(self.n_arms)])
 
-        index = np.clip((expected_rewards + epsilon), None, 1)/np.clip(expected_cost+epsilon, self.gamma, None)
+        index = np.clip((expected_rewards + epsilon), None, 1)/np.clip(expected_cost-epsilon, self.gamma, None)
 
         return np.argmax(index)
 

@@ -35,15 +35,15 @@ warnings.filterwarnings("ignore")
 if __name__ == "__main__":
     budget = 1000
     linear = [
-        ("b-Greedy", LinGreedy, {"context_dim": 5, "n_arms": 3, "epsilon": 4}),
+        #("b-Greedy", LinGreedy, {"context_dim": 5, "n_arms": 3, "epsilon": 4}),
         #(r"$\epsilon$-First", LinFirst, {"context_dim": 5, "n_arms": 3, "epsilon": 0.01, "budget": budget}),
         #("c-LinUCB Tor", TorLinCUCB, {"context_dim": 5, "n_arms": 3, "budget": budget}),
         #("c-LinUCB Xia", XiaLinCUCB, {"context_dim": 5, "n_arms": 3, "alpha": 0.25}),
-        ("m-LinUCB Xia", mLinUCB, {"context_dim": 5, "n_arms": 3, "alpha": 0.25}),
+        #("m-LinUCB Xia", mLinUCB, {"context_dim": 5, "n_arms": 3, "alpha": 0.25}),
         (r"Lin $\omega$-UCB", LinOmegaUCB, {"context_dim": 5, "n_arms": 3, "p": 0.25}),
-        ("Contextual TS", ThompsonSampling, {"context_dim": 5, "n_arms": 3, "v": 0.1}),
+        #("Contextual TS", ThompsonSampling, {"context_dim": 5, "n_arms": 3, "v": 0.1}),
         #(r"$\beta$-TS", BetaThompsonSampling, {"context_dim": 5, "n_arms": 3, "s": 1}),
-        ("Contextual c-TS", CThompsonSampling, {"context_dim": 5, "n_arms": 3, "v": 0.1}),
+        #("Contextual c-TS", CThompsonSampling, {"context_dim": 5, "n_arms": 3, "v": 0.1}),
     ]
 
     linear1 = [
@@ -91,12 +91,12 @@ if __name__ == "__main__":
     ]
 
     non_linear = [
-        #(r"Neural $\omega$-UCB", NeuralOmegaUCB, {"context_dim": 5, "n_arms": 3, "p": 0.25}),
+        (r"Neural $\omega$-UCB", NeuralOmegaUCB, {"context_dim": 5, "n_arms": 3, "p": 0.25}),
         #("GP UCB", GPUCB, {"context_dim": 5, "n_arms": 3, "gamma": 0.1}),
-        #(r"GP $\omega$-UCB", GPWUCB, {"context_dim": 5, "n_arms": 3, "p": 0.25}),
+        (r"GP $\omega$-UCB", GPWUCB, {"context_dim": 5, "n_arms": 3, "p": 0.25}),
         #("GP TS", GPTS, {"context_dim": 5, "n_arms": 3, "delta": 0.1}),
         #(r"GP $\beta$-TS", Beta_GPTS, {"context_dim": 5, "n_arms": 3, "delta": 0.1}),
-        ("Neural b-Greedy", NeuralGreedy, {"context_dim": 5, "n_arms": 3, "alpha": 4}),
+        #("Neural b-Greedy", NeuralGreedy, {"context_dim": 5, "n_arms": 3, "alpha": 4}),
 
     ]
 
@@ -116,13 +116,13 @@ if __name__ == "__main__":
     }
 
     reward_function = Linear(**parameter_synthetic)
-    cost_function = FixedValue(**parameter_synthetic)
+    cost_function = Linear(**parameter_synthetic)
     filename = "experiment_logs.csv"
     context = SyntheticContext
     bernoulli = False
 
-    executor = Executor(linear1, reward_function, cost_function, context,
-                        n_features=5, n_runs=20, b=budget, filename=filename, bernoulli=bernoulli)
+    executor = Executor(non_linear, reward_function, cost_function, context,
+                        n_features=5, n_runs=10, b=budget, filename=filename, bernoulli=bernoulli)
     executor.run_all()
 
     plot_data = interp_plot("experiment_logs.csv")

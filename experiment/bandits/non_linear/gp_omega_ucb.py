@@ -38,12 +38,11 @@ class GPWUCB:
         upper =[]
         for i in range(self.n_arms):
             mu_r,sigma= self.gps[i].predict(context.reshape(1, -1), return_std=True)
-            #print(f"NeuralOmnegaUCB mu_r in round {round} and arm {i}", mu_r)
-            eta = 1
             arm_count = self.arm_counts[i]
             z = np.sqrt(2* self.p* np.log(round + 2))
-            if mu_r != 0 and mu_r != 1:
-                eta = 1
+            eta = sigma**2/((1-mu_r)*mu_r)
+            #eta = 1
+
 
             A = arm_count + z**2 * eta
             B = 2*arm_count*mu_r + z**2 * eta # eig noch * (M-m) aber das ist hier gleich (1-0)
@@ -60,11 +59,10 @@ class GPWUCB:
         lower =[]
         for i in range(self.n_arms):
             mu_c,sigma= self.gps_c[i].predict(context.reshape(1, -1), return_std=True)
-            eta = 1
             arm_count = self.arm_counts[i]
             z = np.sqrt(2* self.p* np.log(round + 2))
-            if mu_c != 0 and mu_c != 1:
-                eta = 1
+            eta = sigma**2/((1-mu_c)*mu_c)
+            #eta = 1
 
             A = arm_count + z**2 * eta
             B = 2*arm_count*mu_c + z**2 * eta # eig. * (M-m) aber das ist hier gleich (1-0)
